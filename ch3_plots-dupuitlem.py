@@ -18,7 +18,7 @@ from generate_colormap import get_continuous_cmap
 
 
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
-base_output_path = 'CaseStudy_8'
+base_output_path = 'CaseStudy_7'
 model_runs = np.arange(25)
 nrows = 5
 ncols = 5
@@ -73,33 +73,33 @@ for i in plot_runs:
     grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
     # grid = read_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
     elev = grid.at_node['topographic__elevation']
-    dx = grid.dx/df_params['lg'][i]
+    dx = grid.dx
     y = np.arange(grid.shape[0] + 1) * dx - dx * 0.5
     x = np.arange(grid.shape[1] + 1) * dx - dx * 0.5
  
     ls = LightSource(azdeg=135, altdeg=45)
     axs[m,n].imshow(
                     ls.hillshade(elev.reshape(grid.shape).T, 
-                        vert_exag=1, 
-                        dx=grid.dx, 
-                        dy=grid.dy), 
+                                vert_exag=1, 
+                                dx=dx, 
+                                dy=dx), 
                     origin="lower", 
                     extent=(x[0], x[-1], y[0], y[-1]), 
                     cmap='gray',
                     )
-    axs[m,n].text(0.04, 
-                0.95, 
-                i, #df_params['label'][i], 
-                transform=axs[m,n].transAxes, 
-                fontsize=12, 
-                verticalalignment='top',
-                color='k',
-                bbox=dict(ec='w',
-                          fc='w', 
-                          alpha=0.7,
-                          boxstyle="Square, pad=0.1",
-                          )
-                )   
+    # axs[m,n].text(0.04, 
+    #             0.95, 
+    #             i, #df_params['label'][i], 
+    #             transform=axs[m,n].transAxes, 
+    #             fontsize=12, 
+    #             verticalalignment='top',
+    #             color='k',
+    #             bbox=dict(ec='w',
+    #                       fc='w', 
+    #                       alpha=0.7,
+    #                       boxstyle="Square, pad=0.1",
+    #                       )
+    #             )   
     if m != nrows-1:
         axs[m, n].set_xticklabels([])
     if n != 0:
@@ -107,8 +107,8 @@ for i in plot_runs:
 
 # axs[-1, 0].set_ylabel(r'$y/\ell_g$')
 # axs[-1, 0].set_xlabel(r'$x/\ell_g$')
-plt.subplots_adjust(left=0.15, bottom=0.15, right=None, top=None, wspace=0.15, hspace=0.15)
-plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300)
+# plt.subplots_adjust(left=0.15, bottom=0.15, right=None, top=None, wspace=0.15, hspace=0.15)
+# plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300)
 
 #%% Saturation class
 
