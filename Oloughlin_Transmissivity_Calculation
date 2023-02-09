@@ -8,6 +8,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import matlab.engine
+from os import listdir
 
 def baseflow_filter(y, a, BFImax):
     """
@@ -41,37 +43,26 @@ def mouse_event(event):
 
     """
     print('x: {} and y: {}'.format(event.xdata, event.ydata))
-        
-def baseflow_calc(Q, P):
-    """
-    Parameters
-    ----------
-    Q : Pandas Dataframe
-        Column names 0, 1, 2, 3, 4, 5, 6. In order left to right: year, month, day, hour, minute, second, discharge (mm/day)
-    P : Pandas Dataframe
-        Column names 0, 1, 2, 3, 4, 5, 6. In order left to right: year, month, day, hour, minute, second, precipitation (mm/day)
-   
-    Returns
-    -------
-     baseflow : Arraay of float64
-        timeseries of baseflow (mm/day) in 15 minute segments in one column 
 
-    """
-    y = Q[6]
-    a = 0.9999
-    BFImax = 0.8
-    baseflow = baseflow_filter(y,a,BFImax)
-    return baseflow
+def giani_calc_index_baseflow():
+    eng = matlab.engine.start_matlab()
     
-def hydrograph(Q, P, baseflow):
-    """
+    A , B = (eng.example((r"C:\Users\josep\OneDrive - Johns Hopkins\Watershed MetaAnlysis\Spring 2023\O'Loughlin Method\Elder Creek Precipitation (mmday).txt"), (r"C:\Users\josep\OneDrive - Johns Hopkins\Watershed MetaAnlysis\Spring 2023\O'Loughlin Method\Elder Creek Discharge (mmday).txt"), nargout = 2))
 
+    indicies = pd.DataFrame(A) 
+    baseflow = pd.DataFrame(B)
+    #index_start_flow; index_finish_flow; index_start_rain; index_finish_rain
+    return indicies, baseflow
+    
+def hydrograph(Q, P, baseflow,titlename ='Elder Creek Hydrograph'):
+    """
+    Creates a hydrograph with timeseries of discharge, precipitation, and baseflow. Returns a dataframe with pertinent information to manually seperate storm events
     Parameters
     ----------
     Q : Pandas Dataframe
-        Column names 0, 1, 2, 3, 4, 5, 6. In order left to right: year, month, day, hour, minute, second, discharge (mm/day)
+        Column names: year, month, day, hour, minute, second, discharge (mm/day)
     P : Pandas Dataframe
-        Column names 0, 1, 2, 3, 4, 5, 6. In order left to right: year, month, day, hour, minute, second, precipitation (mm/day)
+        Column names: year, month, day, hour, minute, second, precipitation (mm/day)
     baseflow : Arraay of float64
         timeseries of baseflow (mm/day) in 15 minute segments in one column 
 
@@ -82,8 +73,8 @@ def hydrograph(Q, P, baseflow):
     """
     x = Q.index
     y1 = baseflow
-    y2 = Q[6]
-    y3 = P[6]
+    y2 = Q['discharge (mm/day)']
+    y3 = P['precipitation (mm/day)']
     
     fig, ax1 = plt.subplots(figsize=(12,10))
     #Implementing mouse_event for the hydrograph
@@ -105,7 +96,7 @@ def hydrograph(Q, P, baseflow):
     ax1.set_ylabel(('Flow (mm/hour)'),
                    fontdict={'fontsize': 14})
     
-    ax1.set_title('Hydrograph Elder Creek', color = 'g')
+    ax1.set_title(titlename, color = 'g')
     
     legend = fig.legend()
     
@@ -115,15 +106,16 @@ def hydrograph(Q, P, baseflow):
     #creating DataFrame for Manual Event Seperation Analysis with baseflow, rain, and flow
     foranalysis = pd.DataFrame({'baseflow': y1,'flow': y2,'rain': y3})
     foranalysis['flow-baseflow'] = foranalysis['flow'] - foranalysis['baseflow']
-    
+    return foranalysis
 def event_sums(Q, P, baseflow, ind):
     """
+    Takes event start and end indicies and cumulates total precipitation and discharge amounts for each event. 
     Parameters
     ----------
     Q : Pandas Dataframe
-        Column names 0, 1, 2, 3, 4, 5, 6. In order left to right: year, month, day, hour, minute, second, discharge (mm/day)
+        Column names: year, month, day, hour, minute, second, discharge (mm/day)
     P : Pandas Dataframe
-        Column names 0, 1, 2, 3, 4, 5, 6. In order left to right: year, month, day, hour, minute, second, precipitation (mm/day)
+        Column names: year, month, day, hour, minute, second, precipitation (mm/day)
     baseflow : Arraay of float64
         timeseries of baseflow (mm/day) in 15 minute segments in one column 
     ind : Pandas Dataframe
@@ -137,8 +129,8 @@ def event_sums(Q, P, baseflow, ind):
         Discharge sum (mm/day) for each event in order
 
     """
-    P1 = P[6]
-    Q1 = Q[6]
+    P1 = P['precipitation (mm/day)']
+    Q1 = Q['discharge (mm/day)']
     
     #Making lists that include the sums for each event
     i = 0
@@ -164,7 +156,7 @@ def event_sums(Q, P, baseflow, ind):
     Qsumpts = np.array(Qsumpts)
     return Psumpts, Qsumpts
 
-def plot_Psumpts_vs_Qsumpts(Psumpts, Qsumpts):
+def plot_Psumpts_vs_Qsumpts(Psumpts, Qsumpts,titlename ='Elder Creek'):
     """
     
     Parameters
@@ -191,12 +183,12 @@ def plot_Psumpts_vs_Qsumpts(Psumpts, Qsumpts):
     
     plt.xscale('log')
     plt.yscale('log') 
-    plt.title('Elder Creek')
+    plt.title(titlename)
     plt.ylabel('Cumulative Flow Sum per event')
     plt.xlabel("Cumulative Precip Sum per event")
     plt.show()
 
-def Oloughlin_graph(Psumpts, Qsumpts, baseflow):
+def Oloughlin_graph(Psumpts, Qsumpts, baseflow,titlename ='Oloughln plot'):
     """
 
     Parameters
@@ -222,6 +214,7 @@ def Oloughlin_graph(Psumpts, Qsumpts, baseflow):
     #sorts out any runoff ratios (QPpts) that are zero
     QPpts['QPpts'] = QPpts['QPpts'].fillna(0)
     QPpts = QPpts.dropna()
+    
     
     #for events that have a runoff ratio that is greater than one, set to 1. 
     for i in range(0,len(QPpts)):
@@ -270,7 +263,7 @@ def Oloughlin_graph(Psumpts, Qsumpts, baseflow):
     #plotting the O'Loughlin graph
     axis.scatter(figdata['1/Qo'], (figdata['Q/P Points'])*100)#, c=figdata['Precip sums'], s=50, cmap='Blues', norm = colors.LogNorm(), alpha = 0.5)
     #axis.text(1,80,f"theta= {theta:.3f}")
-    axis.set_title('Oloughin graph')
+    axis.set_title(titlename)
     axis.set_xlabel('1/Qo')
     axis.set_ylabel("Q/P")
     axis.set_ylim(-5,105)
@@ -282,18 +275,22 @@ def Oloughlin_graph(Psumpts, Qsumpts, baseflow):
     OData = pd.DataFrame()
     OData['1/Qo'] = figdata['1/Qo'] 
     OData['0-1'] = (figdata['Q/P Points'])
-    
+    #filtering data for runoff events that are not infinity, greater than 1, or less than tolerance 0.0002
+    OData = OData[OData['0-1'] >= 0.0002]
+    OData = OData[OData['0-1'] != (-math.inf)]
+    OData = OData[OData['0-1'] != 1]
+    OData = OData.reset_index()
     return OData
 
-def transmissivity_calc(ti, OData):
+def transmissivity_calc(ti, OData, titlename ='Elder Creek'):
     """
 
     Parameters
     ----------
     ti : Pandas Dataframe
-        Columns left to right: TI (ti values sorted from highest to lowest, float), 0-1 (values starting at 1 on the 0 index TI value and going down to 0 on the last value)
+        Columns left to right: TI (ti values sorted from highest to lowest, float), '0-1' (values starting at 1 on the 0 index TI value and going down to 0 on the last value)
     OData : Pandas Dataframe
-        Columns from right to left: 1/Qo (1 over the initial baseflow for each event), 0-1 (runoff ratio for each event)
+        Columns from right to left: 1/Qo (1 over the initial baseflow for each event), '0-1' (runoff ratio for each event)
 
     Returns
     -------
@@ -324,7 +321,7 @@ def transmissivity_calc(ti, OData):
     logQ = df['1/Qo'].dropna()
     df1 = pd.DataFrame()
     df1['logQ'] = logQ
-    
+
     for j in range(0,len(logQ)):
         value = df['0-1 Ol'][j]
         colname = '0-1'
@@ -350,9 +347,9 @@ def transmissivity_calc(ti, OData):
     logQ = df1['logQ']
     logTIvals = df1['logTIvals']
     plt.scatter(logQ,logTIvals,c=df1.index, s=50, cmap='Blues', alpha = 0.5)
-    plt.title('Elder Creek')
-    plt.xlim(4,12)
-    plt.ylim(0,10)
+    plt.title(titlename)
+    plt.xlim(0,15)
+    plt.ylim(0,15)
     plt.xlabel('log(1/Qo)')
     plt.ylabel('log(TI), log(A/WS)')
     b = (sum(logTIvals)/len(logTIvals)) - (sum(logQ)/len(logQ))
@@ -373,7 +370,7 @@ def transmissivity_calc(ti, OData):
     T = np.exp(b)
     return T, df, b, a1
 
-def final_graph(T, df, b, a1):
+def final_graph(T, df, b, a1, titlename ='Elder Creek'):
     """
 
     Parameters
@@ -404,7 +401,7 @@ def final_graph(T, df, b, a1):
     df2['logTI'] = np.log(df2['TI'])
     plt.scatter(df2['logT/Qo'],df2['0-1 Ol'],c=df2.index, s=50, cmap='Blues', alpha = 1)
     plt.plot(np.log(df2['TI']),df2['0-1'], color = '#1f77b4')
-    plt.title('Elder Creek')
+    plt.title(titlename)
     trans = f'{T: .2f}'
     errup = f'{(math.e**(a1+b)): .2f}'
     errdown = f'{(math.e**(b-a1)): .2f}'
@@ -420,9 +417,9 @@ def run_total(Q, P, ind, ti):
     Parameters
     ----------
     Q : Pandas Dataframe
-        Column names 0, 1, 2, 3, 4, 5, 6. In order left to right: year, month, day, hour, minute, second, discharge (mm/day)
+        Column names: year, month, day, hour, minute, second, discharge (mm/day)
     P : Pandas Dataframe
-        Column names 0, 1, 2, 3, 4, 5, 6. In order left to right: year, month, day, hour, minute, second, precipitation (mm/day)
+        Column names: year, month, day, hour, minute, second, precipitation (mm/day)
     ind : Pandas Dataframe
         Events, columns left to right: event number, index_startflow, index_endflow, index_startrain, index_endrain. All integers.  
     ti : Pandas Dataframe
@@ -432,17 +429,20 @@ def run_total(Q, P, ind, ti):
     -------
     final O'loughlin graph
     """
-    baseflow = baseflow_calc(Q,P)
+    baseflow = baseflow_filter(y = Q['discharge (mm/day)'],a = 0.9999, BFImax = 0.8)
     hydrograph(Q,P,baseflow)
     Psumpts, Qsumpts = event_sums(Q, P, baseflow, ind)
     plot_Psumpts_vs_Qsumpts(Psumpts, Qsumpts)
     OData = Oloughlin_graph(Psumpts, Qsumpts, baseflow)
     T, df, b, a1 = transmissivity_calc(ti,OData)
     final_graph(T, df, b, a1)
-#%% EXAMPLE 
-Q = pd.read_csv("Elder Creek Discharge (mmday).txt", sep = (' '), header = None)
-P = pd.read_csv("Elder Creek Precipitation (mmday).txt", sep = (' '), header = None)
-ti = pd.read_csv("Elder Creek TI CDF Data")
-ind = pd.read_csv("Indicies.txt", sep = ('\t'))
 
-run_total(Q, P, ind, ti)
+if __name__ == "__main__":
+    Q = pd.read_csv("Elder Creek Discharge (mmday).txt", sep = (' '), header = None)
+    Q = Q.rename(columns={0: "year",1:"month", 2:"day", 3:"hour",4:"minute", 5:"second", 6:"discharge (mm/day)"})
+    P = pd.read_csv("Elder Creek Precipitation (mmday).txt", sep = (' '), header = None)
+    P = P.rename(columns={0: "year",1:"month", 2:"day", 3:"hour",4:"minute", 5:"second", 6:"precipitation (mm/day)"})
+    ti = pd.read_csv("Elder Creek TI CDF Data")
+    ind = pd.read_csv("Indicies.txt", sep = ('\t'))
+    
+    run_total(Q, P, ind, ti)
