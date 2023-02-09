@@ -43,16 +43,6 @@ def mouse_event(event):
 
     """
     print('x: {} and y: {}'.format(event.xdata, event.ydata))
-
-def giani_calc_index_baseflow():
-    eng = matlab.engine.start_matlab()
-    
-    A , B = (eng.example((r"C:\Users\josep\OneDrive - Johns Hopkins\Watershed MetaAnlysis\Spring 2023\O'Loughlin Method\Elder Creek Precipitation (mmday).txt"), (r"C:\Users\josep\OneDrive - Johns Hopkins\Watershed MetaAnlysis\Spring 2023\O'Loughlin Method\Elder Creek Discharge (mmday).txt"), nargout = 2))
-
-    indicies = pd.DataFrame(A) 
-    baseflow = pd.DataFrame(B)
-    #index_start_flow; index_finish_flow; index_start_rain; index_finish_rain
-    return indicies, baseflow
     
 def hydrograph(Q, P, baseflow,titlename ='Elder Creek Hydrograph'):
     """
