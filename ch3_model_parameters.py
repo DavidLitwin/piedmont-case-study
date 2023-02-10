@@ -64,8 +64,8 @@ df_params['D'] = df_params['D'].mean()
 path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
 path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
 
-name_chi_DR = "baltimore2015_DR1_MChiSegmented.csv"
-name_chi_BR = "baltimore2015_BR_MChiSegmented.csv"
+name_chi_DR = "baltimore2015_DR1_0.5_MChiSegmented.csv"
+name_chi_BR = "baltimore2015_BR_0.5_MChiSegmented.csv"
 
 df_chi_DR = pd.read_csv(path1 + name_chi_DR)
 df_chi_BR = pd.read_csv(path2 + name_chi_BR)

@@ -30,8 +30,11 @@ def calc_weighted_avg(df, key):
 
 #%% ksat and b
 
-ksat_range = np.geomspace(2e-6, 2e-5, 5)
-b_range = np.geomspace(0.5, 5, 5)
+ksat_range = np.geomspace(0.3, 1.2, 5) * 1/(24*3600)
+b_range = np.geomspace(1.5, 6, 5)
+
+# ksat_range = np.geomspace(2, 10, 5) * 1/(24*3600)
+# b_range = np.geomspace(0.25, 1.25, 5)
 
 ksat_all = []
 b_all = []
@@ -79,8 +82,8 @@ df_params['D'] = np.mean(D)
 path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
 path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
 
-name_chi_DR = "baltimore2015_DR1_MChiSegmented.csv"
-name_chi_BR = "baltimore2015_BR_MChiSegmented.csv"
+name_chi_DR = "baltimore2015_DR1_0.5_MChiSegmented.csv"
+name_chi_BR = "baltimore2015_BR_0.5_MChiSegmented.csv"
 
 df_chi_DR = pd.read_csv(path1 + name_chi_DR)
 df_chi_BR = pd.read_csv(path2 + name_chi_BR)
@@ -90,7 +93,7 @@ df_chi_BR = pd.read_csv(path2 + name_chi_BR)
 
 # estimate the runoff ratio Qstar_max = (Q/P) for the sites, which is needed to isolate K from Q* in our streampower law
 # start by assuming that they are the same, then iterate based on the model results.
-df_params['Qstar_max'] = 0.6
+df_params['Qstar_max'] = 0.3
 
 # choose steepness index of the segments with larger drainage areas, because 
 # this avoids headwaters where there should be more dependence on Q*
@@ -213,7 +216,7 @@ df_params['output_interval'] = (10/(df_params['dtg']/df_params['tg'])).round().a
 #%%
 
 folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
-N = 8
+N = 10
 
 
 for i in df_params.index:
