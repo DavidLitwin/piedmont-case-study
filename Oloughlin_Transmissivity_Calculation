@@ -50,9 +50,9 @@ def hydrograph(Q, P, baseflow,titlename ='Elder Creek Hydrograph'):
     Parameters
     ----------
     Q : Pandas Dataframe
-        Column names: year, month, day, hour, minute, second, discharge (mm/day)
+        Column names: 'year', 'month', 'day', 'hour', 'minute', 'second', 'discharge (mm/day)'
     P : Pandas Dataframe
-        Column names: year, month, day, hour, minute, second, precipitation (mm/day)
+        Column names: 'year', 'month', 'day', 'hour', 'minute', 'second', 'precipitation (mm/day)'
     baseflow : Arraay of float64
         timeseries of baseflow (mm/day) in 15 minute segments in one column 
 
@@ -103,13 +103,13 @@ def event_sums(Q, P, baseflow, ind):
     Parameters
     ----------
     Q : Pandas Dataframe
-        Column names: year, month, day, hour, minute, second, discharge (mm/day)
+        Column names: 'year', 'month', 'day', 'hour', 'minute', 'second', 'discharge (mm/day)'
     P : Pandas Dataframe
-        Column names: year, month, day, hour, minute, second, precipitation (mm/day)
+        Column names: 'year', 'month', 'day', 'hour', 'minute', 'second', 'precipitation (mm/day)'
     baseflow : Arraay of float64
         timeseries of baseflow (mm/day) in 15 minute segments in one column 
     ind : Pandas Dataframe
-        Columns left to right: event number, index_startflow, index_endflow, index_startrain, index_endrain. All integers.  
+        Columns left to right: 'event number', 'index_startflow', 'index_endflow', 'index_startrain', 'index_endrain'. All integers.  
 
     Returns
     -------
@@ -193,7 +193,7 @@ def Oloughlin_graph(Psumpts, Qsumpts, baseflow,titlename ='Oloughln plot'):
     Returns
     -------
     OData : Pandas Dataframe
-        Columns from right to left: 1/Qo (1 over the initial baseflow for each event), 0-1 (runoff ratio for each event)
+        Columns from right to left: '1/Qo' (1 over the initial baseflow for each event), 'RR_event' (runoff ratio for each event)
 
     """
     fig, axis = plt.subplots()
@@ -264,11 +264,11 @@ def Oloughlin_graph(Psumpts, Qsumpts, baseflow,titlename ='Oloughln plot'):
     #configuring data for other steps
     OData = pd.DataFrame()
     OData['1/Qo'] = figdata['1/Qo'] 
-    OData['0-1'] = (figdata['Q/P Points'])
+    OData['RR_event'] = (figdata['Q/P Points'])
     #filtering data for runoff events that are not infinity, greater than 1, or less than tolerance 0.0002
-    OData = OData[OData['0-1'] >= 0.0002]
-    OData = OData[OData['0-1'] != (-math.inf)]
-    OData = OData[OData['0-1'] != 1]
+    OData = OData[OData['RR_event'] >= 0.0002]
+    OData = OData[OData['RR_event'] != (-math.inf)]
+    OData = OData[OData['RR_event'] != 1]
     OData = OData.reset_index()
     return OData
 
@@ -278,9 +278,9 @@ def transmissivity_calc(ti, OData, titlename ='Elder Creek'):
     Parameters
     ----------
     ti : Pandas Dataframe
-        Columns left to right: TI (ti values sorted from highest to lowest, float), '0-1' (values starting at 1 on the 0 index TI value and going down to 0 on the last value)
+        Columns left to right: 'TI' (ti values sorted from highest to lowest, float), 'CDF_Val' (values starting at 1 on the 0 index TI value and going down to 0 on the last value)
     OData : Pandas Dataframe
-        Columns from right to left: 1/Qo (1 over the initial baseflow for each event), '0-1' (runoff ratio for each event)
+        Columns from right to left: '1/Qo' (1 over the initial baseflow for each event), 'RR_event' (runoff ratio for each event)
 
     Returns
     -------
@@ -288,11 +288,11 @@ def transmissivity_calc(ti, OData, titlename ='Elder Creek'):
         Transmissivity Estimate
     df : Pandas Dataframe
         Columns left to right:
-            TI (ti values sorted from highest to lowest, float)
-            0-1 (values starting at 1 on the 0 index TI value and going down to 0 on the last
-            1/Qo (log of the baseflow values before the discharge response for each event, nans to fill the rest of the column)
-            1/Qo not log (same as 1/Qo but not logged)
-            0-1 Ol (runoff ratio for each event)
+            'TI' (ti values sorted from highest to lowest, float)
+            'CDF_Val' (values starting at 1 on the 0 index TI value and going down to 0 on the last
+            '1/Qo' (log of the baseflow values before the discharge response for each event, nans to fill the rest of the column)
+            '1/Qo not log' (same as 1/Qo but not logged)
+            'RR_event' (runoff ratio for each event)
     b : float
         y intercept of log(Qo) vs log(TI) graph with fixed slope of 1
     a1 : float64
@@ -302,7 +302,7 @@ def transmissivity_calc(ti, OData, titlename ='Elder Creek'):
     finaldata = ti.copy(deep=True)
     finaldata['1/Qo'] = np.log(OData['1/Qo']*1000)
     finaldata['1/Qo not log'] = (OData['1/Qo']*1000)
-    finaldata['0-1 Ol'] = OData['0-1']
+    finaldata['RR_event'] = OData['RR_event']
     
     #finding closest TI value in complement of the CDF to runoff ratio for each storm event
     # find neighbor code courtesy of https://stackoverflow.com/questions/30112202/how-do-i-find-the-closest-values-in-a-pandas-series-to-an-input-number
@@ -313,8 +313,8 @@ def transmissivity_calc(ti, OData, titlename ='Elder Creek'):
     df1['logQ'] = logQ
 
     for j in range(0,len(logQ)):
-        value = df['0-1 Ol'][j]
-        colname = '0-1'
+        value = df['RR_event'][j]
+        colname = 'CDF_Val'
         exactmatch = df[df[colname] == value]
         if value == 0:
             df1 = df1.drop([j])
@@ -369,11 +369,11 @@ def final_graph(T, df, b, a1, titlename ='Elder Creek'):
         Transmissivity Estimate
     df : Pandas Dataframe
         Columns left to right:
-            TI (ti values sorted from highest to lowest, float)
-            0-1 (values starting at 1 on the 0 index TI value and going down to 0 on the last
-            1/Qo (log of the baseflow values before the discharge response for each event, nans to fill the rest of the column)
-            1/Qo not log (same as 1/Qo but not logged)
-            0-1 Ol (runoff ratio for each event)
+            'TI' (ti values sorted from highest to lowest, float)
+            'CDF_Val' (values starting at 1 on the 0 index TI value and going down to 0 on the last
+            '1/Qo' (log of the baseflow values before the discharge response for each event, nans to fill the rest of the column)
+            '1/Qo' not log (same as 1/Qo but not logged)
+            'RR_event' (runoff ratio for each event)
     b : float
         y intercept of log(Qo) vs log(TI) graph with fixed slope of 1
     a1 : float64
@@ -389,8 +389,8 @@ def final_graph(T, df, b, a1, titlename ='Elder Creek'):
     df2['T/Qo'] = df2['1/Qo not log']*T
     df2['logT/Qo'] = np.log(df2['T/Qo'])
     df2['logTI'] = np.log(df2['TI'])
-    plt.scatter(df2['logT/Qo'],df2['0-1 Ol'],c=df2.index, s=50, cmap='Blues', alpha = 1)
-    plt.plot(np.log(df2['TI']),df2['0-1'], color = '#1f77b4')
+    plt.scatter(df2['logT/Qo'],df2['RR_event'],c=df2.index, s=50, cmap='Blues', alpha = 1)
+    plt.plot(np.log(df2['TI']),df2['CDF_Val'], color = '#1f77b4')
     plt.title(titlename)
     trans = f'{T: .2f}'
     errup = f'{(math.e**(a1+b)): .2f}'
@@ -407,13 +407,13 @@ def run_total(Q, P, ind, ti):
     Parameters
     ----------
     Q : Pandas Dataframe
-        Column names: year, month, day, hour, minute, second, discharge (mm/day)
+        Column names: 'year', 'month', 'day', 'hour', 'minute', 'second', 'discharge (mm/day)'
     P : Pandas Dataframe
-        Column names: year, month, day, hour, minute, second, precipitation (mm/day)
+        Column names: 'year', 'month', 'day', 'hour', 'minute', 'second', 'precipitation (mm/day)'
     ind : Pandas Dataframe
-        Events, columns left to right: event number, index_startflow, index_endflow, index_startrain, index_endrain. All integers.  
+        Events, columns left to right: 'event number', 'index_startflow', 'index_endflow', 'index_startrain', 'index_endrain'. All integers.  
     ti : Pandas Dataframe
-        Columns left to right: TI (ti values sorted from highest to lowest, float), 0-1 (values starting at 1 on the 0 index TI value and going down to 0 on the last value)
+        Columns left to right: 'TI' (ti values sorted from highest to lowest, float), 'CDF_val' (values starting at 1 on the 0 index TI value and going down to 0 on the last value)
 
     Returns
     -------
@@ -433,6 +433,8 @@ if __name__ == "__main__":
     P = pd.read_csv("Elder Creek Precipitation (mmday).txt", sep = (' '), header = None)
     P = P.rename(columns={0: "year",1:"month", 2:"day", 3:"hour",4:"minute", 5:"second", 6:"precipitation (mm/day)"})
     ti = pd.read_csv("Elder Creek TI CDF Data")
+    ti = ti.rename(columns={'0-1': "CDF_Val"})
     ind = pd.read_csv("Indicies.txt", sep = ('\t'))
     
     run_total(Q, P, ind, ti)
+
