@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-import matlab.engine
+# import matlab.engine
 from os import listdir
 
 def baseflow_filter(y, a, BFImax):
@@ -428,13 +428,13 @@ def run_total(Q, P, ind, ti):
     final_graph(T, df, b, a1)
 
 if __name__ == "__main__":
-    Q = pd.read_csv("Elder Creek Discharge (mmday).txt", sep = (' '), header = None)
+    Q = pd.read_csv("Oloughlin_test/ElderCreek_Q_mmday.txt", sep = (' '), header = None)
     Q = Q.rename(columns={0: "year",1:"month", 2:"day", 3:"hour",4:"minute", 5:"second", 6:"discharge (mm/day)"})
-    P = pd.read_csv("Elder Creek Precipitation (mmday).txt", sep = (' '), header = None)
+    P = pd.read_csv("Oloughlin_test/ElderCreek_P_mmday.txt", sep = (' '), header = None)
     P = P.rename(columns={0: "year",1:"month", 2:"day", 3:"hour",4:"minute", 5:"second", 6:"precipitation (mm/day)"})
-    ti = pd.read_csv("Elder Creek TI CDF Data")
+    ti = pd.read_csv("Oloughlin_test/ElderCreek_TI_CDF.csv")
     ti = ti.rename(columns={'0-1': "CDF_Val"})
-    ind = pd.read_csv("Indicies.txt", sep = ('\t'))
+    ind = pd.read_csv("Oloughlin_test/Indicies.txt", sep = ('\t'))
     
     run_total(Q, P, ind, ti)
 
