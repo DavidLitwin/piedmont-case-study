@@ -100,7 +100,7 @@ df_params['n_sp'] = df_params['m_sp']/df_params['concavity']
 Ksp = df_params['U']/df_params['ksn']**df_params['n_sp'] # from streampower law, this is the total erodibility coefficient
 df_params['K'] = Ksp/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
 
-df_params['v0'] = 10 # window we averaged DEMs over to calculate most quantities
+df_params['v0'] = 50 #10 # window we averaged DEMs over to calculate most quantities
 
 # plt.figure()
 # df_chi_BR['m_chi'].plot.density(color='r', label='Baisman')
@@ -302,7 +302,7 @@ df_params.drop(columns=['label'], inplace=True)
 #%%
 
 folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
-N = 6
+N = 13
 
 
 for i in df_params.index:

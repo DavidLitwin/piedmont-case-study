@@ -30,11 +30,11 @@ def calc_weighted_avg(df, key):
 
 #%% ksat and b
 
-ksat_range = np.geomspace(0.3, 1.2, 5) * 1/(24*3600)
-b_range = np.geomspace(1.5, 6, 5)
+# ksat_range = np.geomspace(0.5, 2, 5) * 1/(24*3600)
+# b_range = np.geomspace(1.5, 6, 5)
 
-# ksat_range = np.geomspace(2, 10, 5) * 1/(24*3600)
-# b_range = np.geomspace(0.25, 1.25, 5)
+ksat_range = np.geomspace(2.5, 10, 5) * 1/(24*3600)
+b_range = np.geomspace(0.25, 1.25, 5)
 
 ksat_all = []
 b_all = []
@@ -117,7 +117,7 @@ df_params['n_sp'] = df_params['m_sp']/df_params['concavity']
 
 Ksp = df_params['U']/df_params['ksn']**df_params['n_sp'] # from streampower law, this is the total erodibility coefficient
 df_params['K'] = Ksp/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
-df_params['v0'] = 10 # window we averaged DEMs over to calculate most quantities
+df_params['v0'] = 50 #10 # window we averaged DEMs over to calculate most quantities
 
 
 # %% precipitation
@@ -216,7 +216,7 @@ df_params['output_interval'] = (10/(df_params['dtg']/df_params['tg'])).round().a
 #%%
 
 folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
-N = 10
+N = 11
 
 
 for i in df_params.index:

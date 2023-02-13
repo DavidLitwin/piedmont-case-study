@@ -18,7 +18,7 @@ from generate_colormap import get_continuous_cmap
 
 
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
-base_output_path = 'CaseStudy_7'
+base_output_path = 'CaseStudy_9'
 model_runs = np.arange(25)
 nrows = 5
 ncols = 5
@@ -108,7 +108,7 @@ for i in plot_runs:
 # axs[-1, 0].set_ylabel(r'$y/\ell_g$')
 # axs[-1, 0].set_xlabel(r'$x/\ell_g$')
 # plt.subplots_adjust(left=0.15, bottom=0.15, right=None, top=None, wspace=0.15, hspace=0.15)
-# plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300)
+plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300)
 
 #%% Saturation class
 
