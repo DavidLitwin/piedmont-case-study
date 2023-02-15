@@ -97,6 +97,8 @@ def hydrograph(Q, P, baseflow,titlename ='Elder Creek Hydrograph'):
     foranalysis = pd.DataFrame({'baseflow': y1,'flow': y2,'rain': y3})
     foranalysis['flow-baseflow'] = foranalysis['flow'] - foranalysis['baseflow']
     return foranalysis
+
+
 def event_sums(Q, P, baseflow, ind):
     """
     Takes event start and end indicies and cumulates total precipitation and discharge amounts for each event. 
@@ -121,18 +123,18 @@ def event_sums(Q, P, baseflow, ind):
     """
     P1 = P['precipitation (mm/day)']
     Q1 = Q['discharge (mm/day)']
-    
+    Qf = Q1 - baseflow
+    ind = ind.astype(int)
+
     #Making lists that include the sums for each event
-    i = 0
     Psumpts = []
-    for i in range(0,len(ind)):
-        Psum = P1[int(ind['index_startrain'][i]):int(ind['index_finishrain'][i])].sum()
+    for i in range(len(ind)):
+        Psum = P1[ind['index_startrain'][i]:ind['index_finishrain'][i]].sum()* 0.25 # mm/15 min. find a permanent solution
         Psumpts.append(Psum)
     
-    i = 0
     Qsumpts = []
-    for i in range(0,len(ind)):
-        Qsum = (((Q1[int(ind['index_startflow'][i]):int(ind['index_finishflow'][i])])).sum()) - ((baseflow[int(ind['index_startflow'][i]):int(ind['index_finishflow'][i])])).sum()#((Q['flow intensity'][int(ManualDataSF[i])-1])*(int(ManualDataEF[i]) - int(ManualDataSF[i])))
+    for i in range(len(ind)):
+        Qsum = (((Qf[ind['index_startflow'][i]:ind['index_finishflow'][i]])).sum())* 0.25 # mm/15 min. find a permanent solution
         Qsumpts.append(Qsum)
     
     ### To weed out events that have a very small discharge sum
@@ -164,21 +166,19 @@ def plot_Psumpts_vs_Qsumpts(Psumpts, Qsumpts,titlename ='Elder Creek'):
     Pnon_zero = Psumpts>0 
     Qnon_zero = Qsumpts>0 
     
-    plt.figure()
-    ax = plt.subplot()
-    plt.scatter((Psumpts),(Qsumpts+0.1)) #Adding 0.1 to make the events with some precip values but no flow show. (so 10^-1 flow is really 0)
-    plt.plot((Psumpts.min(), Psumpts.max()),(Psumpts.min(), Psumpts.max()),'k:')
+    fig, ax = plt.subplots()
+    ax.scatter((Psumpts),(Qsumpts+0.1)) #Adding 0.1 to make the events with some precip values but no flow show. (so 10^-1 flow is really 0)
+    ax.plot((Psumpts.min(), Psumpts.max()),(Psumpts.min(), Psumpts.max()),'k:')
     ax.set_xlim((Qsumpts[Qnon_zero].min()*0.3, Psumpts.max()*3))
     ax.set_ylim((Qsumpts[Qnon_zero].min()*0.3, Psumpts.max()*3))
-    
-    plt.xscale('log')
-    plt.yscale('log') 
-    plt.title(titlename)
-    plt.ylabel('Cumulative Flow Sum per event')
-    plt.xlabel("Cumulative Precip Sum per event")
+    ax.set_xscale('log')
+    ax.set_yscale('log') 
+    ax.set_title(titlename)
+    ax.set_ylabel('Cumulative Flow Sum per event')
+    ax.set_xlabel("Cumulative Precip Sum per event")
     plt.show()
 
-def Oloughlin_graph(Psumpts, Qsumpts, baseflow,titlename ='Oloughln plot'):
+def Oloughlin_graph(Psumpts, Qsumpts, baseflow, titlename ='Oloughln plot'):
     """
 
     Parameters
@@ -196,7 +196,7 @@ def Oloughlin_graph(Psumpts, Qsumpts, baseflow,titlename ='Oloughln plot'):
         Columns from right to left: '1/Qo' (1 over the initial baseflow for each event), 'RR_event' (runoff ratio for each event)
 
     """
-    fig, axis = plt.subplots()
+
     QPpts = pd.DataFrame()
     QPpts['Qpts'] = Qsumpts
     QPpts['Ppts'] = Psumpts
@@ -248,9 +248,10 @@ def Oloughlin_graph(Psumpts, Qsumpts, baseflow,titlename ='Oloughln plot'):
     theta = (1/Q2) * (R2)
     hyperbolictest = figdata['1/Qo']
     hyperbolictest = hyperbolictest.sort_values() 
-    axis.plot(hyperbolictest, theta / hyperbolictest)
-    
+
     #plotting the O'Loughlin graph
+    fig, axis = plt.subplots()
+    axis.plot(hyperbolictest, theta / hyperbolictest)
     axis.scatter(figdata['1/Qo'], (figdata['Q/P Points'])*100)#, c=figdata['Precip sums'], s=50, cmap='Blues', norm = colors.LogNorm(), alpha = 0.5)
     #axis.text(1,80,f"theta= {theta:.3f}")
     axis.set_title(titlename)
@@ -265,11 +266,13 @@ def Oloughlin_graph(Psumpts, Qsumpts, baseflow,titlename ='Oloughln plot'):
     OData = pd.DataFrame()
     OData['1/Qo'] = figdata['1/Qo'] 
     OData['RR_event'] = (figdata['Q/P Points'])
+
     #filtering data for runoff events that are not infinity, greater than 1, or less than tolerance 0.0002
     OData = OData[OData['RR_event'] >= 0.0002]
     OData = OData[OData['RR_event'] != (-math.inf)]
     OData = OData[OData['RR_event'] != 1]
     OData = OData.reset_index()
+
     return OData
 
 def transmissivity_calc(ti, OData, titlename ='Elder Creek'):
@@ -336,28 +339,30 @@ def transmissivity_calc(ti, OData, titlename ='Elder Creek'):
     df1 = df1.replace([np.inf, -np.inf], np.nan).dropna(axis=0)
     logQ = df1['logQ']
     logTIvals = df1['logTIvals']
-    plt.scatter(logQ,logTIvals,c=df1.index, s=50, cmap='Blues', alpha = 0.5)
-    plt.title(titlename)
-    plt.xlim(0,15)
-    plt.ylim(0,15)
-    plt.xlabel('log(1/Qo)')
-    plt.ylabel('log(TI), log(A/WS)')
-    b = (sum(logTIvals)/len(logTIvals)) - (sum(logQ)/len(logQ))
-    
+
     #finding error bounds on the intercept value (b) within 95 percent
+    b = (sum(logTIvals)/len(logTIvals)) - (sum(logQ)/len(logQ))
     a = 0
     for k in logTIvals.index:
         a += (logTIvals[k] - logQ[k] - b)**2
     a1 = a / (len(logTIvals)-1)
     a1 = np.sqrt(a1)
     a1 = a1 * 1.96
-    
-    plt.text(10,5,f"b= {b:.3f}")
-    plt.plot(logQ, logQ+b, label='regression line') 
+
+    fig, ax = plt.subplots()
+    ax.scatter(logQ,logTIvals,c=df1.index, s=50, cmap='Blues', alpha = 0.5)
+    ax.plot(logQ, logQ + b, label='regression line') 
+    ax.text(10,5,f"b= {b:.3f}")
+    ax.set_title(titlename)
+    ax.set_xlim(0,15)
+    ax.set_ylim(0,15)
+    ax.set_xlabel('log(1/Qo)')
+    ax.set_ylabel('log(TI), log(A/WS)')
     plt.show()
     
     #Transmissivity Value Estimation
     T = np.exp(b)
+    
     return T, df, b, a1
 
 def final_graph(T, df, b, a1, titlename ='Elder Creek'):
@@ -389,12 +394,15 @@ def final_graph(T, df, b, a1, titlename ='Elder Creek'):
     df2['T/Qo'] = df2['1/Qo not log']*T
     df2['logT/Qo'] = np.log(df2['T/Qo'])
     df2['logTI'] = np.log(df2['TI'])
+
+    trans = f'{T: .2f}'
+    errup = f'{(np.exp(a1+b)): .2f}'
+    errdown = f'{(np.exp(b-a1)): .2f}'
+
+    plt.figure()
     plt.scatter(df2['logT/Qo'],df2['RR_event'],c=df2.index, s=50, cmap='Blues', alpha = 1)
     plt.plot(np.log(df2['TI']),df2['CDF_Val'], color = '#1f77b4')
     plt.title(titlename)
-    trans = f'{T: .2f}'
-    errup = f'{(math.e**(a1+b)): .2f}'
-    errdown = f'{(math.e**(b-a1)): .2f}'
     plt.xlabel(str("log(T/Qo) where T = " + str(trans) + " bounds(" + str(errup) + ' - ' + str(errdown) + ')'))
     plt.ylabel('Quickflow / net rainfall (%)')
     plt.text(6,0.85,"Blue Line = \nCompliment of the \nTopographic Index CDF")
@@ -428,13 +436,13 @@ def run_total(Q, P, ind, ti):
     final_graph(T, df, b, a1)
 
 if __name__ == "__main__":
-    Q = pd.read_csv("Oloughlin_test/ElderCreek_Q_mmday.txt", sep = (' '), header = None)
+    Q = pd.read_csv("./Oloughlin_test/ElderCreek_Q_mmday.txt", sep = (' '), header = None)
     Q = Q.rename(columns={0: "year",1:"month", 2:"day", 3:"hour",4:"minute", 5:"second", 6:"discharge (mm/day)"})
-    P = pd.read_csv("Oloughlin_test/ElderCreek_P_mmday.txt", sep = (' '), header = None)
+    P = pd.read_csv("./Oloughlin_test/ElderCreek_P_mmday.txt", sep = (' '), header = None)
     P = P.rename(columns={0: "year",1:"month", 2:"day", 3:"hour",4:"minute", 5:"second", 6:"precipitation (mm/day)"})
-    ti = pd.read_csv("Oloughlin_test/ElderCreek_TI_CDF.csv")
+    ti = pd.read_csv("./Oloughlin_test/ElderCreek_TI_CDF.csv")
     ti = ti.rename(columns={'0-1': "CDF_Val"})
-    ind = pd.read_csv("Oloughlin_test/Indicies.txt", sep = ('\t'))
+    ind = pd.read_csv("./Oloughlin_test/Indices.txt", sep = ('\t'))
     
     run_total(Q, P, ind, ti)
 
