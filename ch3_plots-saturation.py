@@ -9,6 +9,7 @@ import rasterio as rd
 from sklearn.linear_model import LogisticRegression
 import statsmodels.formula.api as smf
 from scipy.ndimage import gaussian_filter
+import dataretrieval.nwis as nwis
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -16,120 +17,7 @@ from matplotlib import colors
 
 save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
 
-# %% paths
-
-
-## Soldiers Delight:
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
-slopefile = "LSDTT/baltimore2015_DR1_SLOPE.bil"
-areafile = "LSDTT/baltimore2015_DR1_d8_area.bil"
-
-## Oregon Ridge
-# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
-# slopefile = "LSDTT/baltimore2015_BR_SLOPE.bil"
-# areafile = "LSDTT/baltimore2015_BR_d8_area.bil"
-
-#%% import for topographic index
-
-# fitted (10 m) slope
-sf = rd.open(path+slopefile)
-slope = sf.read(1).astype(float)
-slope = np.ma.masked_array(slope, mask=slope==-9999)
-
-dx = sf.transform[0]
-bounds = sf.bounds
-Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
-# sf.close()
-
-# d8 area
-af = rd.open(path+areafile)
-area = af.read(1).astype(float)
-area = np.ma.masked_array(area, mask=area==-9999)
-af.close()
-
-#%%
-# calculate and filter topographic index 
-
-TI = np.log(area/(slope * dx))
-
-plt.figure()
-plt.imshow(TI,
-            origin="upper", 
-            extent=Extent,
-            cmap='viridis',
-            )
-plt.show()
-
-TI_filtered = gaussian_filter(TI, sigma=4)
-
-plt.figure()
-plt.imshow(TI_filtered,
-            origin="upper", 
-            extent=Extent,
-            cmap='viridis',
-            )
-plt.show()
-
-# write TI filtered to .tif
-TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
-# TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
-sf = rd.open(path+slopefile)
-TI_dataset = rd.open(
-    path+TIfile,
-    'w',
-    driver='GTiff',
-    height=sf.height,
-    width=sf.width,
-    count=1,
-    dtype=TI_filtered.dtype,
-    crs=sf.crs,
-    transform=sf.transform,
-)
-TI_dataset.write(TI_filtered,1)
-TI_dataset.close()
-
-#%% clean Pond Branch and Soldiers Delight EMLID REACH saturation files
-
-path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/saturation/'
-paths = glob.glob(path + "PB_UTM_*.csv")
-
-for pth in paths:
-    df = pd.read_csv(pth)
-    df = df[['Name', 'Easting', 'Northing', 'Averaging start', 'Easting RMS', 'Northing RMS']]
-    A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
-    df = df[A]
-
-    namesdict = {'Easting':'X',
-                'Northing': 'Y',
-                'Averaging start': 'BeginTime',
-                'Easting RMS': 'X_rms', 
-                'Northing RMS': 'Y_rms',
-                }
-    df.rename(columns=namesdict, inplace=True)
-    df.to_csv(path + "transects_%s.csv"%pth.split('_')[-1][:-4])
-
-
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/saturation/'
-paths = glob.glob(path + "DR_UTM_*.csv")
-
-for pth in paths:
-    df = pd.read_csv(pth)
-    df = df[['Name', 'Easting', 'Northing', 'Averaging start', 'Easting RMS', 'Northing RMS']]
-    A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
-    df = df[A]
-
-    namesdict = {'Easting':'X',
-                'Northing': 'Y',
-                'Averaging start': 'BeginTime',
-                'Easting RMS': 'X_rms', 
-                'Northing RMS': 'Y_rms',
-                }
-    df.rename(columns=namesdict, inplace=True)
-    df.to_csv(path + "transects_%s.csv"%pth.split('_')[-1][:-4])
-
-
-#%% 
-# Saturation on hillshade
+#%% Saturation on hillshade
 
 path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
 name = 'LSDTT/baltimore2015_DR1_hs.bil' # Druids Run hillshade
@@ -183,8 +71,7 @@ for i in range(len(paths)):
     plt.show()
 
 
-#%% 
-# TI vs saturation
+#%% TI vs saturation
 
 path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
 TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
@@ -234,8 +121,37 @@ for i in range(len(paths)):
     # plt.savefig(f'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BaismanRun_sat_TI_{df.BeginTime[1][0:10]}.png')
     plt.show()
 
-# %%
-# multiplot of TI vs saturation
+
+#%% assemble all saturation dataframes
+
+# path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
+# TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
+# curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
+
+path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
+TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
+curvfile = "LSDTT/10m_window/baltimore2015_BR_CURV.bil" # Baisman Run
+
+dfs = []
+paths = glob.glob(path + "saturation/transects_*.csv")
+for pts_path in paths:
+
+    # load and remove non-sat points
+    df = pd.read_csv(pts_path) # sampled pts
+    A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
+    df = df[A]
+
+    # get date
+    datetime = pd.to_datetime(df.BeginTime)
+    df['date'] = datetime.dt.date
+    df['datetime_start'] = datetime.iloc[0]
+    
+    # add discharge to df 
+
+    dfs.append(df)
+dfall = pd.concat(dfs, axis=0)
+
+# %% Druids Run: Load Q
 
 # discharge from Druids Run (DR) and DR Upper Gage (UG)
 q_path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/'
@@ -252,37 +168,47 @@ dfqug['datetime'] = dfqug.index
 dfqug['date'] = dfqug['datetime'].dt.date
 dfqug.set_index('datetime', inplace=True)
 
+# %% Baisman Run: Load Q
 
-#%%
+site_BR = '01583580'
+site_PB = '01583570'
 
-# assemble all saturation dataframes
-dfs = []
-paths = glob.glob(path + "saturation/transects_*.csv")
-for pts_path in paths:
+dfq = nwis.get_record(sites=site_BR, service='iv', start='2022-01-01', end='2023-02-10')
+dfqug = nwis.get_record(sites=site_PB, service='iv', start='2022-01-01', end='2023-02-10')
 
-    # load and remove non-sat points
-    df = pd.read_csv(pts_path) # sampled pts
-    A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
-    df = df[A]
 
-    # get date
-    datetime = pd.to_datetime(df.BeginTime)
-    df['date'] = datetime.dt.date
-    
-    # add discharge to df 
+#%% Baisman run: process Q
 
-    dfs.append(df)
-dfall = pd.concat(dfs, axis=0)
+# area normalized discharge
+area_BR = 381e4 #m2
+dfq['Q mm/hr'] = dfq['00060']*0.3048**3*3600*1000/area_BR
+dfq.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
 
-#%%
+area_PB = 37e4 #m2
+dfqug['Q mm/hr'] = dfqug['00060']*0.3048**3*3600*1000/area_PB
+dfqug.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
 
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
-TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
-curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
+# index from string to datetime
+dfq['datetime'] = pd.to_datetime(dfq.index, utc=True)
+dfq.set_index('datetime', inplace=True)
 
-# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
-# TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
-# curvfile = "LSDTT/10m_window/baltimore2015_BR_CURV.bil" # Baisman Run
+dfqug['datetime'] = pd.to_datetime(dfqug.index, utc=True)
+dfqug.set_index('datetime', inplace=True)
+
+# get the start times of every saturation survey
+times = dfall.datetime_start.unique()
+times = [time.round('5min') for time in times]
+
+# isolate discharge at those times
+dfq = dfq.loc[times]
+dfq['datetime'] = dfq.index
+dfq['date'] = dfq['datetime'].dt.date
+
+dfqug = dfqug.loc[times]
+dfqug['datetime'] = dfqug.index
+dfqug['date'] = dfqug['datetime'].dt.date
+
+#%% Add to saturation dataframe
 
 # add filtered TI points
 tis = rd.open(path+TIfile)
@@ -294,11 +220,12 @@ tis.close()
 sat_val_dict = {'N':0, 'Ys':1, 'Yp':2, 'Yf':3}
 dfall['sat_val'] = dfall['Name'].apply(lambda x: sat_val_dict[x])
 
-#%%
 # add discharge
 dfnew = dfall.merge(dfqug, on='date', how='left')
-dfnew['Q'].fillna(0.0, inplace=True)
-dfnew.drop(columns=['OID_', 'BeginTime', 'Unnamed: 0', 'FolderPath'], inplace=True)
+# dfnew = dfall.merge(dfq, on='date', how='left')
+dfnew['Q mm/hr'].fillna(0.0, inplace=True)
+dfnew['Q'] = dfnew['Q mm/hr']
+dfnew.drop(columns=['OID_', 'BeginTime', 'Unnamed: 0', 'FolderPath'], inplace=True, errors='ignore')
 
 #%% scatter TI-sat
 
@@ -337,7 +264,8 @@ in_sample = pd.DataFrame({'prob':model.predict()})
 
 #%% make a sensitivity-specificity plot for model prediction
 
-thresholds = np.linspace(0.2,0.8,20)
+# thresholds = np.linspace(0.2,0.8,20)
+thresholds = np.linspace(0.05,0.6,20)
 sens = np.zeros_like(thresholds)
 spec = np.zeros_like(thresholds)
 for i, thresh in enumerate(thresholds):
@@ -352,8 +280,9 @@ sc = ax.scatter(1-spec, sens, c=thresholds)
 ax.axline([0,0], [1,1])
 ax.set_xlabel('1-specificity')
 ax.set_ylabel('sensitivity')
-ax.colorbar(sc, label='threshold')
-plt.savefig(save_directory+'sens_spec_DR.png')
+fig.colorbar(sc, label='threshold')
+# plt.savefig(save_directory+'sens_spec_DR.png')
+plt.savefig(save_directory+'sens_spec_BR.png')
 
 #%% predict odds of saturation in sample with the model
 
