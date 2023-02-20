@@ -2,114 +2,330 @@
 
 import numpy as np
 import pandas as pd
-import pickle
-import glob
-import rasterio as rd
+from datetime import timedelta
 import statsmodels.api as sm
 
 import matplotlib.pyplot as plt
-from matplotlib import colors
 
-#%%
+import dataretrieval.nwis as nwis
+from Hydrograph.hydrograph import sepBaseflow
 
-path_DR = "C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/Gianni_event_DR/"
-path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/Gianni_event_BAIS/"
+# %% load precip
 
-file_DR = 'Druids Run.csv'
-file_BR = 'Baisman Run.csv'
-df_DR = pd.read_csv(path_DR+file_DR)
-df_BR = pd.read_csv(path_BR+file_BR)
+path_DR = "C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/DruidRun_precip_15min_2022_4-2023_1.csv"
+path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/Baisman_precip_15min_2022_4-2023_1.csv"
 
-df_DR['date'] = pd.to_datetime(df_DR[['year', 'month', 'day', 'hour', 'minute', 'second']])
-df_BR['date'] = pd.to_datetime(df_BR[['year', 'month', 'day', 'hour', 'minute', 'second']])
-df_DR.drop(columns=['year', 'month', 'day', 'hour', 'minute', 'second'], inplace=True)
-df_BR.drop(columns=['year', 'month', 'day', 'hour', 'minute', 'second'], inplace=True)
+dfp_DR = pd.read_csv(path_DR)
+dfp_BR = pd.read_csv(path_BR)
 
+dfp_BR['Date'] = pd.to_datetime(dfp_BR['Datetime'], utc=True)
+dfp_BR.set_index('Date', inplace=True)
+dfp_BR.drop(columns=['Datetime'], inplace=True)
 
-# event_names = ['Q_start', 'Q_end', 'P_start', 'P_end']
-file = 'StartFinishFlowStartFinishRain.csv'
-df_DR_event = pd.read_csv(path_DR+file) #, names=event_names
-df_BR_event = pd.read_csv(path_BR+file)
+dfp_DR['Date'] = pd.to_datetime(dfp_DR['Datetime'], utc=True)
+dfp_DR.set_index('Date', inplace=True)
+dfp_DR.drop(columns=['Datetime'], inplace=True)
 
-# %%
+# %% Baisman Run: Load Q
+
+site_BR = '01583580'
+site_PB = '01583570'
+
+dfq = nwis.get_record(sites=site_BR, service='iv', start='2022-06-01', end='2023-01-26')
+dfqug = nwis.get_record(sites=site_PB, service='iv', start='2022-06-01', end='2023-01-26')
+
+# dfq.to_csv(path+'dfq.csv')
+# dfqug.to_csv(path+'dfqug.csv')
+
+#%% Baisman run: process Q
+
+# area normalized discharge
+area_BR = 381e4 #m2
+dfq['Total runoff [m^3 s^-1]'] = dfq['00060']*0.3048**3 #m3/ft3 
+dfq.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
+
+area_PB = 37e4 #m2
+dfqug['Total runoff [m^3 s^-1]'] = dfqug['00060']*0.3048**3 #m3/ft3
+dfqug.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
+
+# index from string to datetime
+dfq['Date'] = pd.to_datetime(dfq.index, utc=True)
+dfq.set_index('Date', inplace=True)
+
+dfqug['Date'] = pd.to_datetime(dfqug.index, utc=True)
+dfqug.set_index('Date', inplace=True)
+
+#%% baseflow separation and events for Baisman
+
+dfq_in = dfq.drop(columns='00060_cd')
+dfq_in = dfq_in.resample('15min').mean()
+
+dfq_BR = sepBaseflow(dfq_in, 15, area_BR*1e-6, k=0.000546, tp_min=6)
+
+#%% merge precip
+
+dfq_BR = dfq_BR.merge(dfp_BR, how='inner', on='Date')
+
+# %% group data to events
+
+# Peakflow volume [m^3]
+dfq_BR['Qf'] = dfq_BR['Peakflow [m^3 s^-1]'] * 3600 * dfq_BR['dt [hour]'] *(1/area_BR) * 1000 # sec/hr * hr * 1/m2 * mm/m
+
+dfe_BR = dfq_BR.groupby('Peak nr.').agg({'Peakflow starts': 'min', 
+                                 'Peakflow ends': 'max',
+                                 'Qf':'sum',
+                                 'Max. flow [m^3 s^-1]':'max',
+                                 'Baseflow [m^3 s^-1]':'min',
+                                 })
+dfe_BR['Precip starts'] = dfe_BR['Peakflow starts'] - timedelta(hours=6)
+dfe_BR['Precip ends'] = dfe_BR['Peakflow ends'] - timedelta(hours=2)
+
+# remove events where one ends before another begins
+overlapped = []
+for i in range(len(dfe_BR)-1):
+    if dfe_BR['Precip starts'].iloc[i+1] < dfe_BR['Precip ends'].iloc[i]:
+        overlapped.append(dfe_BR.index[i])
+
+dfe_BR = dfe_BR.drop(overlapped)
+
+# event precip
+event_P = np.zeros(len(dfe_BR))
+for i in range(len(dfe_BR)):
+    event_P[i] = np.sum(dfq_BR['P (mm)'].loc[dfe_BR['Precip starts'].iloc[i]:dfe_BR['Precip ends'].iloc[i]])
+dfe_BR['P'] = event_P
+
+dfe_BR['Qb0'] = dfe_BR['Baseflow [m^3 s^-1]'] * 3600 * 24 * (1/area_BR) * 1000
+#%% Event runoff ratio
 
 fig, ax = plt.subplots()
-ax.plot(df_DR.date, df_DR['flow (mm/day)'], 'k-')
-ax.plot(df_DR.date, df_DR['baseflow (mm/day)'], 'b-')
-ax.scatter(df_DR['date'].iloc[df_DR_event['Q_start']], df_DR['flow (mm/day)'].iloc[df_DR_event['Q_start'].values], c='g')
-ax.scatter(df_DR['date'].iloc[df_DR_event['Q_end']], df_DR['flow (mm/day)'].iloc[df_DR_event['Q_end'].values], c='r')
+sc = ax.scatter(dfe_BR['P'], dfe_BR['Qf'], c=dfe_BR['Qb0'], cmap='plasma', alpha=0.6)
 ax.set_yscale('log')
-ax.set_ylabel('Q (mm/day)')
-ax1 = ax.twinx()
-ax1.plot(df_DR.date, df_DR['rain (mm/day)'])
-ax1.set_ylim(2*np.max(df_DR['rain (mm/day)']), 0)
-ax1.set_ylabel('P (mm/day)')
-fig.autofmt_xdate()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DR_Q_P.png')
+ax.set_xscale('log')
+ax.set_ylabel('Event Q (mm)')
+ax.set_xlabel('Event P (mm)')
+fig.colorbar(sc, label='Qb initial')
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR_BR.png')
 plt.show()
 
 #%%
+
+# plot baseflow and discharge with events
 fig, ax = plt.subplots()
-ax.plot(df_BR.date, df_BR['flow (mm/day)'], 'k-')
-ax.plot(df_BR.date, df_BR['baseflow (mm/day)'], 'b-')
-ax.scatter(df_BR['date'].iloc[df_BR_event['Q_start']], df_BR['flow (mm/day)'].iloc[df_BR_event['Q_start'].values], c='g')
-ax.scatter(df_BR['date'].iloc[df_BR_event['Q_end']], df_BR['flow (mm/day)'].iloc[df_BR_event['Q_end'].values], c='r')
+ax.plot(dfq_BR['Total runoff [m^3 s^-1]'], 'k-')
+ax.plot(dfq_BR['Baseflow [m^3 s^-1]'], 'b-')
+ax.scatter(dfe_BR['Peakflow starts'], 
+           dfq_BR['Total runoff [m^3 s^-1]'].loc[dfe_BR['Peakflow starts']],
+           color='g')
+ax.scatter(dfe_BR['Peakflow ends'], 
+           dfq_BR['Total runoff [m^3 s^-1]'].loc[dfe_BR['Peakflow ends']], 
+           color='r')
 ax.set_yscale('log')
-ax.set_ylabel('Q (mm/day)')
+
 ax1 = ax.twinx()
-ax1.plot(df_BR.date, df_BR['rain (mm/day)'])
-ax1.set_ylim(2*np.max(df_BR['rain (mm/day)']), 0)
-ax1.set_ylabel('P (mm/day)')
+ax1.plot(dfq_BR['P (mm)'])
+ax1.scatter(dfe_BR['Precip starts'], 
+           dfq_BR['P (mm)'].loc[dfe_BR['Precip starts']],
+           color='g')
+ax1.scatter(dfe_BR['Precip ends'], 
+           dfq_BR['P (mm)'].loc[dfe_BR['Precip ends']], 
+           color='r')
+ax1.set_ylim(2*dfq_BR['P (mm)'].max(), 0)
+ax1.set_ylabel('P (mm)')
 fig.autofmt_xdate()
 plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BR_Q_P.png')
-plt.show()
 
+# %% load Druids discharge
+
+path = "C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/DruidRun_discharge_15min_2022_3-2022_9.csv"
+dfq_DR = pd.read_csv(path)
+
+dfq_DR['Date'] = pd.to_datetime(dfq_DR['Datetime'], utc=True)
+dfq_DR.set_index('Date', inplace=True)
+dfq_DR.drop(columns=['Datetime'], inplace=True)
+
+area_DR = 107e4 #m2
+dfq_DR['Total runoff [m^3 s^-1]'] = dfq_DR['Q m3/s']
+dfq_DR.drop(columns=['Q m3/s'], inplace=True)
 
 # %%
 
-df_BR['quickflow (mm)'] = (df_BR['flow (mm/day)'] - df_BR['baseflow (mm/day)'])/(24*4) # convert from mm/day to mm per time interval (15 min)
-df_DR['quickflow (mm)'] = (df_DR['flow (mm/day)'] - df_DR['baseflow (mm/day)'])/(24*4)
-df_BR['precip (mm)'] = df_BR['rain (mm/day)']/(24*4)
-df_DR['precip (mm)'] = df_DR['rain (mm/day)']/(24*4)
+dfq_DR = sepBaseflow(dfq_DR, 15, area_DR*1e-6, k=0.000546, tp_min=6)
 
-df_BR_event['P'] = np.nan
-df_BR_event['Qf'] = np.nan
-df_BR_event['start_date'] = np.nan
-for i in df_BR_event.index:
-    df_BR_event['P'].iloc[i] = df_BR['precip (mm)'].iloc[df_BR_event['P_start'][i]:df_BR_event['P_end'][i]].sum()
-    df_BR_event['Qf'].iloc[i] = df_BR['quickflow (mm)'].iloc[df_BR_event['Q_start'][i]:df_BR_event['Q_end'][i]].sum()
-    df_BR_event['start_date'].iloc[i] = df_BR['date'].iloc[df_BR_event['P_start']]
+#%% merge precip
 
+dfq_DR = dfq_DR.merge(dfp_DR, how='inner', on='Date')
 
-df_DR_event['P'] = np.nan
-df_DR_event['Qf'] = np.nan
-df_DR_event['start_date'] = np.nan
-for i in df_DR_event.index:
-    df_DR_event['P'].iloc[i] = df_DR['precip (mm)'].iloc[df_DR_event['P_start'][i]:df_DR_event['P_end'][i]].sum()
-    df_DR_event['Qf'].iloc[i] = df_DR['quickflow (mm)'].iloc[df_DR_event['Q_start'][i]:df_DR_event['Q_end'][i]].sum()
-    df_DR_event['start_date'].iloc[i] = df_DR['date'].iloc[df_DR_event['P_start']]
+# %% group data to events
 
+# Peakflow volume [m^3]
+dfq_DR['Qf'] = dfq_DR['Peakflow [m^3 s^-1]'] * 3600 * dfq_DR['dt [hour]'] *(1/area_DR) * 1000 # sec/hr * hr * 1/m2 * mm/m
 
-#%%
+dfe_DR = dfq_DR.groupby('Peak nr.').agg({'Peakflow starts': 'min', 
+                                 'Peakflow ends': 'max',
+                                 'Qf':'sum',
+                                 'Max. flow [m^3 s^-1]':'max',
+                                 'Baseflow [m^3 s^-1]':'min',
+                                 })
+dfe_DR['Precip starts'] = dfe_DR['Peakflow starts'] - timedelta(hours=2)
+dfe_DR['Precip ends'] = dfe_DR['Peakflow ends'] - timedelta(hours=1)
 
-# all
+# remove events where one ends before another begins
+overlapped = []
+for i in range(len(dfe_DR)-1):
+    if dfe_DR['Precip starts'].iloc[i+1] < dfe_DR['Precip ends'].iloc[i]:
+        overlapped.append(dfe_DR.index[i])
+
+dfe_DR = dfe_DR.drop(overlapped)
+
+# event precip
+event_P = np.zeros(len(dfe_DR))
+for i in range(len(dfe_DR)):
+    event_P[i] = np.sum(dfq_DR['P (mm)'].loc[dfe_DR['Precip starts'].iloc[i]:dfe_DR['Precip ends'].iloc[i]])
+dfe_DR['P'] = event_P
+
+# remove where event precip is zero
+dfe_DR = dfe_DR.drop(dfe_DR.index[dfe_DR['P'] < 0.1])
+
+dfe_DR['Qb0'] = dfe_DR['Baseflow [m^3 s^-1]'] * 3600 * 24 * (1/area_DR) * 1000
+
+#%% plot baseflow and discharge with events
+
+fig, ax = plt.subplots()
+ax.plot(dfq_DR['Total runoff [m^3 s^-1]'], 'k-')
+ax.plot(dfq_DR['Baseflow [m^3 s^-1]'], 'b-')
+ax.scatter(dfe_DR['Peakflow starts'], 
+           dfq_DR['Total runoff [m^3 s^-1]'].loc[dfe_DR['Peakflow starts']],
+           color='g')
+ax.scatter(dfe_DR['Peakflow ends'], 
+           dfq_DR['Total runoff [m^3 s^-1]'].loc[dfe_DR['Peakflow ends']], 
+           color='r')
+ax.set_yscale('log')
+
+ax1 = ax.twinx()
+ax1.plot(dfq_DR['P (mm)'])
+ax1.scatter(dfe_DR['Precip starts'], 
+           dfq_DR['P (mm)'].loc[dfe_DR['Precip starts']],
+           color='g')
+ax1.scatter(dfe_DR['Precip ends'], 
+           dfq_DR['P (mm)'].loc[dfe_DR['Precip ends']], 
+           color='r')
+ax1.set_ylim(2*dfq_DR['P (mm)'].max(), 0)
+ax1.set_ylabel('P (mm)')
+fig.autofmt_xdate()
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DR_Q_P.png')
+
+#%% Event runoff ratio: Druids
+
+# fig, axs = plt.subplots()
+# sc = ax.scatter(dfe_DR['P'], dfe_DR['Qf'], c=dfe_DR['Qb0'], cmap='plasma', alpha=0.6)
+# ax.set_yscale('log')
+# ax.set_xscale('log')
+# ax.set_ylabel('Event Q (mm)')
+# ax.set_xlabel('Event P (mm)')
+# fig.colorbar(sc, label='Qb initial')
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR_DR.png')
+# plt.show()
+
+# %% All without regression
+
 fig, axs = plt.subplots(ncols=2, figsize=(8,5))
-axs[0].scatter(df_BR_event['P'], df_BR_event['Qf'], alpha=0.5, c='b')
+axs[0].scatter(dfe_BR['P'], dfe_BR['Qf'], c=dfe_BR['Qb0'], cmap='plasma', alpha=0.6)
 axs[0].axline([0,0], [1,1], color='k', linestyle='--')
-axs[0].set_ylim((-1,50))
-axs[0].set_xlim((-3,110))
+axs[0].set_ylim((0.005,60))
+axs[0].set_xlim((1,110))
+axs[0].set_yscale('log')
+axs[0].set_xscale('log')
 axs[0].set_ylabel('Event Q (mm)')
 axs[0].set_xlabel('Event P (mm)')
 axs[0].set_title('Baisman Run')
 
-axs[1].scatter(df_DR_event['P'], df_DR_event['Qf'], alpha=0.5, c='r')
+axs[1].scatter(dfe_DR['P'], dfe_DR['Qf'], c=dfe_DR['Qb0'], cmap='plasma', alpha=0.6)
 axs[1].axline([0,0], [1,1], color='k', linestyle='--')
-axs[1].set_ylim((-1,50))
-axs[1].set_xlim((-3,110))
+axs[1].set_ylim((0.005,60))
+axs[1].set_xlim((1,110))
+axs[1].set_yscale('log')
+axs[1].set_xscale('log')
 axs[1].set_ylabel('Event Q (mm)')
 axs[1].set_xlabel('Event P (mm)')
 axs[1].set_title('Druids Run')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png')
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png')
 plt.show()
 
-# %%
+# %% regression for event runoff
+
+dfe_BR = dfe_BR.sort_values(by=['P'])
+# regression
+X = np.log(dfe_BR['P'].values)
+X = sm.add_constant(X)
+y = np.log(dfe_BR['Qf'].values)
+
+model_BR = sm.OLS(y, X)
+results_BR = model_BR.fit()
+# print(results_BR.summary())
+
+dfe_DR = dfe_DR.sort_values(by=['P'])
+X = np.log(dfe_DR['P'].values)
+X = sm.add_constant(X)
+y = np.log(dfe_DR['Qf'].values)
+
+model_DR = sm.OLS(y, X)
+results_DR = model_DR.fit()
+# print(results_DR.summary())
+
+#%% runoff events with regression
+
+fig, axs = plt.subplots(ncols=2, figsize=(10,5))
+
+pred_ols = results_BR.get_prediction()
+iv_l = pred_ols.summary_frame()["obs_ci_lower"]
+iv_u = pred_ols.summary_frame()["obs_ci_upper"]
+fit = results_BR.fittedvalues
+
+vmax = max([dfe_BR['Qb0'].max(), dfe_DR['Qb0'].max()])
+vmin = max([dfe_BR['Qb0'].min(), dfe_DR['Qb0'].min()])
+
+axs[0].scatter(dfe_BR['P'], dfe_BR['Qf'], c=dfe_BR['Qb0'], cmap='plasma', vmin=vmin, vmax=vmax, alpha=0.6)
+axs[0].plot(dfe_BR['P'], np.exp(fit), "b-", alpha=0.5)
+axs[0].fill_between(dfe_BR['P'], np.exp(iv_l) , np.exp(iv_u), alpha=0.15, color='gray')
+axs[0].axline([0,0], [1,1], color='k', linestyle='--')
+axs[1].text(0.1, 
+            0.9, 
+            r'$a = %.3f \pm %.3f$'%(results_BR.params[1], results_BR.bse[1]), 
+            transform=axs[0].transAxes
+            )
+axs[0].set_ylim((0.005,60))
+axs[0].set_xlim((1,110))
+axs[0].set_yscale('log')
+axs[0].set_xscale('log')
+axs[0].set_ylabel('Event Q (mm)')
+axs[0].set_xlabel('Event P (mm)')
+axs[0].set_title('Baisman Run')
+axs[0].set_aspect(0.7)
+
+pred_ols = results_DR.get_prediction()
+iv_l = pred_ols.summary_frame()["obs_ci_lower"]
+iv_u = pred_ols.summary_frame()["obs_ci_upper"]
+fit = results_DR.fittedvalues
+
+sc = axs[1].scatter(dfe_DR['P'], dfe_DR['Qf'], c=dfe_DR['Qb0'], cmap='plasma', vmin=vmin, vmax=vmax, alpha=0.6)
+axs[1].plot(dfe_DR['P'], np.exp(fit), "b-", alpha=0.5)
+axs[1].fill_between(dfe_DR['P'], np.exp(iv_l) , np.exp(iv_u), alpha=0.15, color='gray')
+axs[1].axline([0,0], [1,1], color='k', linestyle='--')
+axs[1].text(0.1, 
+            0.9, 
+            r'$a = %.3f \pm %.3f$'%(results_DR.params[1], results_DR.bse[1]), 
+            transform=axs[1].transAxes
+            )
+axs[1].set_ylim((0.005,60))
+axs[1].set_xlim((1,110))
+axs[1].set_yscale('log')
+axs[1].set_xscale('log')
+axs[1].set_ylabel('Event Q (mm)')
+axs[1].set_xlabel('Event P (mm)')
+axs[1].set_title('Druids Run')
+axs[1].set_aspect(0.7)
+fig.colorbar(sc, label='Initial Baseflow (mm/d)')
+
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png')
+# %% O'loughlin analysis
+

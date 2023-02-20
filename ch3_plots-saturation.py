@@ -6,9 +6,7 @@ import pandas as pd
 import pickle
 import glob
 import rasterio as rd
-from sklearn.linear_model import LogisticRegression
 import statsmodels.formula.api as smf
-from scipy.ndimage import gaussian_filter
 import dataretrieval.nwis as nwis
 
 import matplotlib.pyplot as plt
@@ -124,13 +122,13 @@ for i in range(len(paths)):
 
 #%% assemble all saturation dataframes
 
-# path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
-# TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
-# curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
+path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
+TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
+curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
 
-path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
-TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
-curvfile = "LSDTT/10m_window/baltimore2015_BR_CURV.bil" # Baisman Run
+# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
+# TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
+# curvfile = "LSDTT/10m_window/baltimore2015_BR_CURV.bil" # Baisman Run
 
 dfs = []
 paths = glob.glob(path + "saturation/transects_*.csv")
@@ -153,20 +151,33 @@ dfall = pd.concat(dfs, axis=0)
 
 # %% Druids Run: Load Q
 
-# discharge from Druids Run (DR) and DR Upper Gage (UG)
 q_path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/'
+
+# load continuous discharge (we'll use it to fill a day where a dilution gage was not done)
+area_DR = 107e4 #m2
+q_DR_cont = pd.read_csv(q_path+'DruidRun_discharge_15min_2022_3-2022_9.csv', 
+                        parse_dates=[0],
+                        infer_datetime_format=True)
+q_DR_cont.set_index('Datetime', inplace=True)
+q_DR_cont['Q m/d'] = q_DR_cont['Q m3/s'] * 3600 * 24 * (1/area_DR) # sec/hr * hr/d * 1/m2
+
+# load dilution gaged Q for Druids Run
 q_DR = pickle.load(open(q_path+'discharge_DR.p', 'rb'))
-q_UG = pickle.load(open(q_path+'discharge_UG.p', 'rb'))
-
-dfq = pd.DataFrame.from_dict(q_DR, orient='index', dtype=None, columns=['Q'])
+dfq = pd.DataFrame.from_dict(q_DR, orient='index', dtype=None, columns=['Q']) # Q in L/s
+t1 = pd.Timestamp('2022-04-27 14:45:00')
+dfq.loc[t1] = q_DR_cont['Q m3/s'].loc[t1] * 1000
+dfq = dfq.sort_index()
 dfq['datetime'] = dfq.index
+dfq['Q m/d'] = dfq['Q'] * (1/1000) * 3600 * 24 * (1/area_DR) # m/liter * sec/hr * hr/d * 1/m2
 dfq['date'] = dfq['datetime'].dt.date
-dfq.set_index('datetime', inplace=True)
 
-dfqug = pd.DataFrame.from_dict(q_UG, orient='index', dtype=None, columns=['Q'])
+# load dilution gaged Q for Druids Run Upper Watershed
+area_DRUW = 7.1e4 #m2
+q_UG = pickle.load(open(q_path+'discharge_UG.p', 'rb'))
+dfqug = pd.DataFrame.from_dict(q_UG, orient='index', dtype=None, columns=['Q']) # Q in L/s
 dfqug['datetime'] = dfqug.index
 dfqug['date'] = dfqug['datetime'].dt.date
-dfqug.set_index('datetime', inplace=True)
+dfqug['Q m/d'] = dfqug['Q'] * (1/1000) * 3600 * 24 * (1/area_DRUW) # m/liter * sec/hr * 1/m2
 
 # %% Baisman Run: Load Q
 
@@ -176,16 +187,18 @@ site_PB = '01583570'
 dfq = nwis.get_record(sites=site_BR, service='iv', start='2022-01-01', end='2023-02-10')
 dfqug = nwis.get_record(sites=site_PB, service='iv', start='2022-01-01', end='2023-02-10')
 
+# dfq.to_csv(path+'dfq.csv')
+# dfqug.to_csv(path+'dfqug.csv')
 
 #%% Baisman run: process Q
 
 # area normalized discharge
 area_BR = 381e4 #m2
-dfq['Q mm/hr'] = dfq['00060']*0.3048**3*3600*1000/area_BR
+dfq['Q m/d'] = dfq['00060']*0.3048**3 * 3600 * 24 * (1/area_BR) #m3/ft3 * sec/hr * hr/d * 1/m2
 dfq.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
 
 area_PB = 37e4 #m2
-dfqug['Q mm/hr'] = dfqug['00060']*0.3048**3*3600*1000/area_PB
+dfqug['Q m/d'] = dfqug['00060']*0.3048**3 * 3600 * 24 * (1/area_PB) #m3/ft3 * sec/hr * hr/d * 1/m2
 dfqug.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
 
 # index from string to datetime
@@ -221,10 +234,10 @@ sat_val_dict = {'N':0, 'Ys':1, 'Yp':2, 'Yf':3}
 dfall['sat_val'] = dfall['Name'].apply(lambda x: sat_val_dict[x])
 
 # add discharge
-dfnew = dfall.merge(dfqug, on='date', how='left')
-# dfnew = dfall.merge(dfq, on='date', how='left')
-dfnew['Q mm/hr'].fillna(0.0, inplace=True)
-dfnew['Q'] = dfnew['Q mm/hr']
+dfnew = dfall.merge(dfq, on='date', how='left')
+# dfnew = dfall.merge(dfqug, on='date', how='left')
+
+dfnew['Q'] = dfnew['Q m/d'] #* 1000
 dfnew.drop(columns=['OID_', 'BeginTime', 'Unnamed: 0', 'FolderPath'], inplace=True, errors='ignore')
 
 #%% scatter TI-sat
@@ -252,9 +265,22 @@ plt.show()
 
 # make saturation into a binary field
 dfnew['sat_bin'] = (dfnew['sat_val'] > 0) * 1
+dfnew['Qinv'] = 1/dfnew['Q']
 
 # logit using TI and Q as predictors
-model = smf.logit('sat_bin ~ TI_filtered + Q', data=dfnew).fit()
+model = smf.logit('sat_bin ~ TI_filtered + Qinv', data=dfnew).fit()
+
+# check model performance
+print(model.summary())
+
+# predict in sample
+in_sample = pd.DataFrame({'prob':model.predict()})
+
+#%% alternate logistic regression
+
+dfnew['TIQ'] = dfnew['TI_filtered'] + np.log(dfnew['Q'])
+# logit using TI and Q as predictors
+model = smf.logit('sat_bin ~ TIQ', data=dfnew).fit()
 
 # check model performance
 print(model.summary())
@@ -265,7 +291,8 @@ in_sample = pd.DataFrame({'prob':model.predict()})
 #%% make a sensitivity-specificity plot for model prediction
 
 # thresholds = np.linspace(0.2,0.8,20)
-thresholds = np.linspace(0.05,0.6,20)
+# thresholds = np.linspace(0.05,0.6,20)
+thresholds = np.linspace(0.05,0.3,20)
 sens = np.zeros_like(thresholds)
 spec = np.zeros_like(thresholds)
 for i, thresh in enumerate(thresholds):
@@ -278,29 +305,23 @@ for i, thresh in enumerate(thresholds):
 fig, ax = plt.subplots()
 sc = ax.scatter(1-spec, sens, c=thresholds)
 ax.axline([0,0], [1,1])
-ax.set_xlabel('1-specificity')
-ax.set_ylabel('sensitivity')
+ax.set_xlabel('False Positive Ratio')
+ax.set_ylabel('True Positive Ratio')
 fig.colorbar(sc, label='threshold')
 # plt.savefig(save_directory+'sens_spec_DR.png')
-plt.savefig(save_directory+'sens_spec_BR.png')
-
-#%% predict odds of saturation in sample with the model
-
-dfnew['pred_prob'] = model.predict()
+# plt.savefig(save_directory+'sens_spec_BR.png')
 
 fig, ax = plt.subplots()
-grouped = dfnew.groupby('date')
-for key, group in grouped:
-    ax.scatter(group['TI_filtered'], 
-                group['pred_prob'],
-                c=group['Q'],
-                vmin=min(dfnew['Q']),
-                vmax=max(dfnew['Q']),
-                cmap='plasma',
-                )
+sc = ax.scatter(thresholds, (1-spec)+sens, c=1-spec)
+ax.set_xlabel('Threshold')
+ax.set_ylabel('Total Positive Ratio')
+fig.colorbar(sc, label='False Positive Ratio')
 
+#%% get TI values for Druids Run
 
-#%% get all the topographic index values for Druids Run
+basin_name = 'LSDTT/baltimore2015_DR1_AllBasins.bil'
+bsn = rd.open(path + basin_name)
+basin = bsn.read(1) > 0 
 
 areafile = "LSDTT/baltimore2015_DR1_d8_area.bil"
 af = rd.open(path+areafile)
@@ -310,16 +331,34 @@ af.close()
 TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
 tif = rd.open(path+TIfile)
 TI = tif.read(1).astype(float)
-TI = TI[area>0] # np.ma.masked_array(TI, mask=area==-9999)
+TI = TI[basin]
+
+#%% get TI values for Baisman Run
+
+basin_name = 'LSDTT/baltimore2015_BR_AllBasins.bil'
+bsn = rd.open(path + basin_name)
+basin = bsn.read(1) > 0 
+
+areafile = "LSDTT/baltimore2015_BR_d8_area.bil"
+af = rd.open(path+areafile)
+area = af.read(1).astype(float)
+af.close()
+
+TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif"
+tif = rd.open(path+TIfile)
+TI = tif.read(1).astype(float)
+TI = TI[basin]
 
 #%% Predict out of sample, and plot with TI CDF
 
 TI1 = np.linspace(1,12,100)
-Q_all = np.linspace(0.01,6,5)
+Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
+# Q_all = np.linspace(0.02,0.5,5)
 fig, ax = plt.subplots()
 
 for i, Q in enumerate(Q_all):
-    pred = model.predict(exog=dict(TI_filtered=TI1, Q=Q*np.ones_like(TI1)))
+    pred = model.predict(exog=dict(TI_filtered=TI1, Qinv=1/Q*np.ones_like(TI1)))
+    # pred = model.predict(exog=dict(TI_filtered=TI1, Q=Q*np.ones_like(TI1)))
 
     ax.plot(TI1, pred, color=cm.viridis(Q/max(Q_all)), label='Q=%.2f'%Q)
 ax.axvspan(dfnew['TI_filtered'].min(), dfnew['TI_filtered'].max(), alpha=0.2, color='r')
@@ -334,7 +373,53 @@ ax1.set_xlim((1,12))
 ax1.set_ylim(-0.05,1.05)
 ax1.set_ylabel(r'P$(TI \leq TI_x)$')
 ax1.legend(frameon=False, loc='lower right')
-plt.savefig(save_directory+'pred_sat_ti_DR.png')
+# plt.savefig(save_directory+'pred_sat_ti_DR.png')
+plt.savefig(save_directory+'pred_sat_ti_BR.png')
+
+
+#%% calulate a transmissivity
+
+pcrit = 0.5
+rhocrit = lambda pcrit: np.log(pcrit/(1-pcrit))
+b0 = model.params[0]
+b1 = model.params[1]
+# b2 = model.params[2]
+
+# log odds = b0 + b1*TI + b2*(1/Q)
+TIcrit = lambda Q, pcrit: ((rhocrit(pcrit) - b0) - b2 * (1 / Q)) / b1
+
+# # log odds = b0 + b1*TI + b2*Q
+# TIcrit = lambda Q: ((rhocrit - b0) - b2 * Q) / b1
+
+
+# # for the TI + 1/Q model
+# Tmean = np.exp(np.mean(TIcrit(Q_all, pcrit)-np.log(1/(Q_all/1000))))
+
+# for the TI * Q model
+Tmean = np.exp((-b0)/b1) #np.exp((rhocrit(pcrit)-b0)/b1)
+
+#%%
+
+# plt.figure()
+# plt.scatter(Q_all, x)
+
+pcrit_all = np.linspace(0.15, 0.65, 25)
+plt.figure()
+plt.scatter(pcrit_all, TIcrit(np.min(Q_all), pcrit_all))
+plt.scatter(pcrit_all, TIcrit(np.mean(Q_all), pcrit_all))
+plt.scatter(pcrit_all, TIcrit(np.max(Q_all), pcrit_all))
+
+
+#%%
+
+TIsort = np.sort(TI)
+cdf = np.linspace(0,1,len(TI))
+
+CDF = lambda TIc: np.array([cdf[(np.abs(TIsort - tic)).argmin()] for tic in TIc])
+
+Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),50)
+plt.figure()
+plt.scatter(Q_all/1000, TIcrit(Q_all)-np.log(1/(Q_all/1000)))
 
 
 #%% ##### other stuff
@@ -356,3 +441,38 @@ for key, group in grouped:
 ax.set_ylabel('Proportion Saturated')
 ax.set_xlabel(r'$TI \leq TI_x$')
 plt.savefig(save_directory+'cumulative_sat_DR.png')
+
+# predict odds of saturation in sample with the model
+dfnew['pred_prob'] = model.predict()
+
+fig, ax = plt.subplots()
+grouped = dfnew.groupby('date')
+for key, group in grouped:
+    ax.scatter(group['TI_filtered'], 
+                group['pred_prob'],
+                c=group['Q'],
+                vmin=min(dfnew['Q']),
+                vmax=max(dfnew['Q']),
+                cmap='plasma',
+                )
+
+#%%
+
+# parameter uncertainty
+
+Tmean = lambda b0, b1: np.exp((-b0)/b1)
+
+b0_mean = model.params[0]
+b1_mean = model.params[1]
+b0_std = model.bse[0]
+b1_std = model.bse[1]
+
+b0 = b0_std * np.random.randn(100000) + b0_mean
+b1 = b1_std * np.random.randn(100000) + b1_mean
+
+
+T_all = Tmean(b0,b1)
+T_mean = np.mean(T_all)
+T_std = np.std(T_all)
+
+# %%
