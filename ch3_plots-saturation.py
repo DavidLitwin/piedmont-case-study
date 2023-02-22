@@ -122,10 +122,12 @@ for i in range(len(paths)):
 
 #%% assemble all saturation dataframes
 
+site = 'DR'
 path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
 TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
 curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
 
+# site = 'BR'
 # path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
 # TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
 # curvfile = "LSDTT/10m_window/baltimore2015_BR_CURV.bil" # Baisman Run
@@ -168,7 +170,7 @@ t1 = pd.Timestamp('2022-04-27 14:45:00')
 dfq.loc[t1] = q_DR_cont['Q m3/s'].loc[t1] * 1000
 dfq = dfq.sort_index()
 dfq['datetime'] = dfq.index
-dfq['Q m/d'] = dfq['Q'] * (1/1000) * 3600 * 24 * (1/area_DR) # m/liter * sec/hr * hr/d * 1/m2
+dfq['Q m/d'] = dfq['Q'] * (1/1000) * 3600 * 24 * (1/area_DR) # m3/liter * sec/hr * hr/d * 1/m2
 dfq['date'] = dfq['datetime'].dt.date
 
 # load dilution gaged Q for Druids Run Upper Watershed
@@ -184,8 +186,8 @@ dfqug['Q m/d'] = dfqug['Q'] * (1/1000) * 3600 * 24 * (1/area_DRUW) # m/liter * s
 site_BR = '01583580'
 site_PB = '01583570'
 
-dfq = nwis.get_record(sites=site_BR, service='iv', start='2022-01-01', end='2023-02-10')
-dfqug = nwis.get_record(sites=site_PB, service='iv', start='2022-01-01', end='2023-02-10')
+dfq = nwis.get_record(sites=site_BR, service='iv', start='2022-08-01', end='2023-02-10')
+dfqug = nwis.get_record(sites=site_PB, service='iv', start='2022-08-01', end='2023-02-10')
 
 # dfq.to_csv(path+'dfq.csv')
 # dfqug.to_csv(path+'dfqug.csv')
@@ -261,93 +263,63 @@ ax.set_xlabel('TI')
 plt.show()
 
 
-#%% logistic regression with statsmodels
+#%% Logistic regression: sat_bin ~ logTIQ
+
+# logTIQ = TI + log(Q) because TI is already log
+dfnew['logTIQ'] = dfnew['TI_filtered'] + np.log(dfnew['Q'])
+dfnew['sat_bin'] = (dfnew['sat_val'] > 0) * 1
+
+# logit using TI and Q as predictors
+model = smf.logit('sat_bin ~ logTIQ', data=dfnew).fit()
+
+# check model performance
+print(model.summary())
+with open(save_directory+'summary_%s_logTIQ.txt'%site, 'w') as fh:
+    fh.write(model.summary().as_text())
+
+# predict in sample
+in_sample = pd.DataFrame({'prob':model.predict()})
+
+#%% Logistic regression: sat_bin ~ TI_filtered + logQ
 
 # make saturation into a binary field
 dfnew['sat_bin'] = (dfnew['sat_val'] > 0) * 1
-dfnew['Qinv'] = 1/dfnew['Q']
+dfnew['logQ'] = np.log(dfnew['Q'])
 
 # logit using TI and Q as predictors
-model = smf.logit('sat_bin ~ TI_filtered + Qinv', data=dfnew).fit()
+model = smf.logit('sat_bin ~ TI_filtered + logQ', data=dfnew).fit()
 
 # check model performance
 print(model.summary())
+with open(save_directory+'summary_%s_logTI_logQ.txt'%site, 'w') as fh:
+    fh.write(model.summary().as_text())
 
 # predict in sample
 in_sample = pd.DataFrame({'prob':model.predict()})
 
-#%% alternate logistic regression
+#%% get TI values
 
-dfnew['TIQ'] = dfnew['TI_filtered'] + np.log(dfnew['Q'])
-# logit using TI and Q as predictors
-model = smf.logit('sat_bin ~ TIQ', data=dfnew).fit()
+if site=='DR':
 
-# check model performance
-print(model.summary())
+    basin_name = 'LSDTT/baltimore2015_DR1_AllBasins.bil'
+    bsn = rd.open(path + basin_name)
+    basin = bsn.read(1) > 0 
 
-# predict in sample
-in_sample = pd.DataFrame({'prob':model.predict()})
+    TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
+    tif = rd.open(path+TIfile)
+    TI = tif.read(1).astype(float)
+    TI = TI[basin]
 
-#%% make a sensitivity-specificity plot for model prediction
+if site == 'BR':
 
-# thresholds = np.linspace(0.2,0.8,20)
-# thresholds = np.linspace(0.05,0.6,20)
-thresholds = np.linspace(0.05,0.3,20)
-sens = np.zeros_like(thresholds)
-spec = np.zeros_like(thresholds)
-for i, thresh in enumerate(thresholds):
-    in_sample['pred_label'] = (in_sample['prob']>thresh).astype(int)
-    cs = pd.crosstab(in_sample['pred_label'],dfnew['sat_bin'])
-    sens[i] = cs[1][1]/(cs[1][1] + cs[1][0])
-    spec[i] = cs[0][0]/(cs[0][0] + cs[0][1])
+    basin_name = 'LSDTT/baltimore2015_BR_AllBasins.bil'
+    bsn = rd.open(path + basin_name)
+    basin = bsn.read(1) > 0 
 
-
-fig, ax = plt.subplots()
-sc = ax.scatter(1-spec, sens, c=thresholds)
-ax.axline([0,0], [1,1])
-ax.set_xlabel('False Positive Ratio')
-ax.set_ylabel('True Positive Ratio')
-fig.colorbar(sc, label='threshold')
-# plt.savefig(save_directory+'sens_spec_DR.png')
-# plt.savefig(save_directory+'sens_spec_BR.png')
-
-fig, ax = plt.subplots()
-sc = ax.scatter(thresholds, (1-spec)+sens, c=1-spec)
-ax.set_xlabel('Threshold')
-ax.set_ylabel('Total Positive Ratio')
-fig.colorbar(sc, label='False Positive Ratio')
-
-#%% get TI values for Druids Run
-
-basin_name = 'LSDTT/baltimore2015_DR1_AllBasins.bil'
-bsn = rd.open(path + basin_name)
-basin = bsn.read(1) > 0 
-
-areafile = "LSDTT/baltimore2015_DR1_d8_area.bil"
-af = rd.open(path+areafile)
-area = af.read(1).astype(float)
-af.close()
-
-TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
-tif = rd.open(path+TIfile)
-TI = tif.read(1).astype(float)
-TI = TI[basin]
-
-#%% get TI values for Baisman Run
-
-basin_name = 'LSDTT/baltimore2015_BR_AllBasins.bil'
-bsn = rd.open(path + basin_name)
-basin = bsn.read(1) > 0 
-
-areafile = "LSDTT/baltimore2015_BR_d8_area.bil"
-af = rd.open(path+areafile)
-area = af.read(1).astype(float)
-af.close()
-
-TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif"
-tif = rd.open(path+TIfile)
-TI = tif.read(1).astype(float)
-TI = TI[basin]
+    TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif"
+    tif = rd.open(path+TIfile)
+    TI = tif.read(1).astype(float)
+    TI = TI[basin]
 
 #%% Predict out of sample, and plot with TI CDF
 
@@ -357,70 +329,105 @@ Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
 fig, ax = plt.subplots()
 
 for i, Q in enumerate(Q_all):
-    pred = model.predict(exog=dict(TI_filtered=TI1, Qinv=1/Q*np.ones_like(TI1)))
-    # pred = model.predict(exog=dict(TI_filtered=TI1, Q=Q*np.ones_like(TI1)))
+    # pred = model.predict(exog=dict(TI_filtered=TI1, Qinv=1/Q*np.ones_like(TI1)))
+    pred = model.predict(exog=dict(TI_filtered=TI1, logQ=np.log(Q)*np.ones_like(TI1)))
+    # pred = model.predict(exog=dict(logTIQ=TI1 + np.log(Q)))
 
-    ax.plot(TI1, pred, color=cm.viridis(Q/max(Q_all)), label='Q=%.2f'%Q)
+    ax.plot(TI1, pred, color=cm.viridis(Q/max(Q_all)), label='Q=%.2f mm/d'%(Q*1000))
 ax.axvspan(dfnew['TI_filtered'].min(), dfnew['TI_filtered'].max(), alpha=0.2, color='r')
 ax.set_ylim(-0.05,1.05)
-ax.legend(frameon=False)
+ax.set_xlim((0.5,10))
+ax.legend(frameon=False, loc='upper left')
 ax.set_xlabel('TI')
 ax.set_ylabel(r'Modeled P$(saturated)$')
 
 ax1 = ax.twinx()
 ax1.plot(np.sort(TI), np.linspace(0,1,len(TI)), color='k', linewidth=1, label='CDF')
-ax1.set_xlim((1,12))
+ax1.set_xlim((0.5,10))
 ax1.set_ylim(-0.05,1.05)
 ax1.set_ylabel(r'P$(TI \leq TI_x)$')
 ax1.legend(frameon=False, loc='lower right')
-# plt.savefig(save_directory+'pred_sat_ti_DR.png')
-plt.savefig(save_directory+'pred_sat_ti_BR.png')
+# plt.savefig(save_directory+'pred_sat_ti_%s_logTIQ.png'%site)
+plt.savefig(save_directory+'pred_sat_ti_%s_logTI_logQ.png'%site)
 
 
-#%% calulate a transmissivity
+#%% calulate a transmissivity: logTIQ method
 
-pcrit = 0.5
-rhocrit = lambda pcrit: np.log(pcrit/(1-pcrit))
-b0 = model.params[0]
-b1 = model.params[1]
-# b2 = model.params[2]
+Tmean = lambda b0, b1: np.exp((-b0)/b1)
 
-# log odds = b0 + b1*TI + b2*(1/Q)
-TIcrit = lambda Q, pcrit: ((rhocrit(pcrit) - b0) - b2 * (1 / Q)) / b1
+covs = model.cov_params()
+means = model.params
 
-# # log odds = b0 + b1*TI + b2*Q
-# TIcrit = lambda Q: ((rhocrit - b0) - b2 * Q) / b1
+samples = np.random.multivariate_normal(means, covs, size=10000)
 
+Tcalc = Tmean(samples[:,0], samples[:,1])
+T_median = np.median(Tcalc)
+T_lq = np.percentile(Tcalc, 25)
+T_uq = np.percentile(Tcalc, 75)
 
-# # for the TI + 1/Q model
-# Tmean = np.exp(np.mean(TIcrit(Q_all, pcrit)-np.log(1/(Q_all/1000))))
-
-# for the TI * Q model
-Tmean = np.exp((-b0)/b1) #np.exp((rhocrit(pcrit)-b0)/b1)
-
-#%%
-
-# plt.figure()
-# plt.scatter(Q_all, x)
-
-pcrit_all = np.linspace(0.15, 0.65, 25)
-plt.figure()
-plt.scatter(pcrit_all, TIcrit(np.min(Q_all), pcrit_all))
-plt.scatter(pcrit_all, TIcrit(np.mean(Q_all), pcrit_all))
-plt.scatter(pcrit_all, TIcrit(np.max(Q_all), pcrit_all))
+dfT = pd.DataFrame({'Trans. med [m2/d]':T_median,
+              'Trans. lq [m2/d]': T_lq,
+              'Trans. uq [m2/d]': T_uq,
+              'b0':means[0],
+              'b1':means[1]},
+              index=[0]
+              )
+dfT.to_csv(save_directory+'transmissivity_%s_logTIQ.csv'%site)
 
 
-#%%
+#%% calulate a transmissivity: logTI + logQ method
 
-TIsort = np.sort(TI)
-cdf = np.linspace(0,1,len(TI))
+# note, this is not well-behaved. The estimation does not converge to a predictable value using this approach
 
-CDF = lambda TIc: np.array([cdf[(np.abs(TIsort - tic)).argmin()] for tic in TIc])
+def calc_transmissivity(a0, a1, a2, Qbar, Q=1):
+    b0 = a0 - (a2-a1)*np.log(Qbar)
+    b1 = a1
+    bstar = a2 - a1
 
-Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),50)
-plt.figure()
-plt.scatter(Q_all/1000, TIcrit(Q_all)-np.log(1/(Q_all/1000)))
+    coef = np.exp(-b0/b1)
+    q_exponent = -bstar/b1
 
+    T = coef * (Q/Qbar)**q_exponent
+
+    return T, coef, q_exponent
+
+
+covs = model.cov_params()
+means = model.params
+Qbar = np.mean(dfnew['Q'])
+
+
+samples = np.random.multivariate_normal(means, covs, size=500000)
+
+Tcalc, Ccalc, Ecalc = calc_transmissivity(samples[0], samples[1], samples[2], Qbar, Q=Qbar)
+
+T_median = np.median(Tcalc)
+T_lq = np.percentile(Tcalc, 25)
+T_uq = np.percentile(Tcalc, 75)
+
+c_median = np.median(Ccalc)
+c_lq = np.percentile(Ccalc, 25)
+c_uq = np.percentile(Ccalc, 75)
+
+e_median = np.median(Ecalc)
+e_lq = np.percentile(Ecalc, 25)
+e_uq = np.percentile(Ecalc, 75)
+
+dfT = pd.DataFrame({'Trans. med [m2/d]':T_median,
+              'Trans. lq [m2/d]': T_lq,
+              'Trans. uq [m2/d]': T_uq,
+              'coef med': c_median,
+              'coef lq': c_lq,
+              'coef uq': c_uq,
+              'expon med': e_median,
+              'expon lq': e_lq,
+              'expon lq': e_uq,
+              'a0':means[0],
+              'a1':means[1],
+              'a1':means[2]},
+              index=[0]
+              )
+dfT.to_csv(save_directory+'transmissivity_%s_logTI_logQ.csv'%site, float_format="%.3f")
 
 #%% ##### other stuff
 
@@ -456,23 +463,70 @@ for key, group in grouped:
                 cmap='plasma',
                 )
 
-#%%
 
-# parameter uncertainty
+#%% make a positive ratio plot for model prediction
 
-Tmean = lambda b0, b1: np.exp((-b0)/b1)
+# thresholds = np.linspace(0.2,0.8,20)
+# thresholds = np.linspace(0.05,0.6,20)
+thresholds = np.linspace(0.05,0.3,20)
+sens = np.zeros_like(thresholds)
+spec = np.zeros_like(thresholds)
+for i, thresh in enumerate(thresholds):
+    in_sample['pred_label'] = (in_sample['prob']>thresh).astype(int)
+    cs = pd.crosstab(in_sample['pred_label'],dfnew['sat_bin'])
+    sens[i] = cs[1][1]/(cs[1][1] + cs[1][0])
+    spec[i] = cs[0][0]/(cs[0][0] + cs[0][1])
 
-b0_mean = model.params[0]
-b1_mean = model.params[1]
-b0_std = model.bse[0]
-b1_std = model.bse[1]
 
-b0 = b0_std * np.random.randn(100000) + b0_mean
-b1 = b1_std * np.random.randn(100000) + b1_mean
+fig, ax = plt.subplots()
+sc = ax.scatter(1-spec, sens, c=thresholds)
+ax.axline([0,0], [1,1])
+ax.set_xlabel('False Positive Ratio')
+ax.set_ylabel('True Positive Ratio')
+fig.colorbar(sc, label='threshold')
+plt.savefig(save_directory+'sens_spec_%s.png'%site)
+
+fig, ax = plt.subplots()
+sc = ax.scatter(thresholds, (1-spec)+sens, c=1-spec)
+ax.set_xlabel('Threshold')
+ax.set_ylabel('Total Positive Ratio')
+fig.colorbar(sc, label='False Positive Ratio')
+
+#%% various TI_crit things
 
 
-T_all = Tmean(b0,b1)
-T_mean = np.mean(T_all)
-T_std = np.std(T_all)
+pcrit = 0.5
+rhocrit = lambda pcrit: np.log(pcrit/(1-pcrit))
+b0 = model.params[0]
+b1 = model.params[1]
+# b2 = model.params[2]
+
+# # for the TI + 1/Q model
+# log odds = b0 + b1*TI + b2*(1/Q)
+# TIcrit = lambda Q, pcrit: ((rhocrit(pcrit) - b0) - b2 * (1 / Q)) / b1
+# Tmean = np.exp(np.mean(TIcrit(Q_all, pcrit)-np.log(1/(Q_all/1000))))
+
+
+# for the TI * Q model
+TIcrit = lambda Q, pcrit: (rhocrit(pcrit) - b0)/ b1 - np.log(Q)
+Tmean = np.exp((-b0)/b1) #np.exp((rhocrit(pcrit)-b0)/b1)
+
+# if you don't eliminate rhocrit, you get a critical TI that depends on pcrit and Q
+
+pcrit_all = np.linspace(0.15, 0.65, 25)
+plt.figure()
+plt.scatter(pcrit_all, TIcrit(np.min(Q_all), pcrit_all))
+plt.scatter(pcrit_all, TIcrit(np.mean(Q_all), pcrit_all))
+plt.scatter(pcrit_all, TIcrit(np.max(Q_all), pcrit_all))
+
+# not sure what this was
+TIsort = np.sort(TI)
+cdf = np.linspace(0,1,len(TI))
+
+CDF = lambda TIc: np.array([cdf[(np.abs(TIsort - tic)).argmin()] for tic in TIc])
+
+Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),50)
+plt.figure()
+plt.scatter(Q_all/1000, TIcrit(Q_all)-np.log(1/(Q_all/1000)))
 
 # %%
