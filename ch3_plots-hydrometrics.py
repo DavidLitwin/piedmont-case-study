@@ -6,6 +6,7 @@ from datetime import timedelta
 import statsmodels.api as sm
 
 import matplotlib.pyplot as plt
+from matplotlib import colors
 
 import dataretrieval.nwis as nwis
 from Hydrograph.hydrograph import sepBaseflow
@@ -60,7 +61,7 @@ dfqug.set_index('Date', inplace=True)
 dfq_in = dfq.drop(columns='00060_cd')
 dfq_in = dfq_in.resample('15min').mean()
 
-dfq_BR = sepBaseflow(dfq_in, 15, area_BR*1e-6, k=0.000546, tp_min=6)
+dfq_BR = sepBaseflow(dfq_in, 15, area_BR*1e-6, k=0.000546, tp_min=4)
 
 #%% merge precip
 
@@ -114,10 +115,10 @@ fig, ax = plt.subplots()
 ax.plot(dfq_BR['Total runoff [m^3 s^-1]'], 'k-')
 ax.plot(dfq_BR['Baseflow [m^3 s^-1]'], 'b-')
 ax.scatter(dfe_BR['Peakflow starts'], 
-           dfq_BR['Total runoff [m^3 s^-1]'].loc[dfe_BR['Peakflow starts']],
+           dfq_BR['Baseflow [m^3 s^-1]'].loc[dfe_BR['Peakflow starts']],
            color='g')
 ax.scatter(dfe_BR['Peakflow ends'], 
-           dfq_BR['Total runoff [m^3 s^-1]'].loc[dfe_BR['Peakflow ends']], 
+           dfq_BR['Baseflow [m^3 s^-1]'].loc[dfe_BR['Peakflow ends']], 
            color='r')
 ax.set_yscale('log')
 
@@ -149,7 +150,7 @@ dfq_DR.drop(columns=['Q m3/s'], inplace=True)
 
 # %%
 
-dfq_DR = sepBaseflow(dfq_DR, 15, area_DR*1e-6, k=0.000546, tp_min=6)
+dfq_DR = sepBaseflow(dfq_DR, 15, area_DR*1e-6, k=0.000546, tp_min=4)
 
 #%% merge precip
 
@@ -194,10 +195,10 @@ fig, ax = plt.subplots()
 ax.plot(dfq_DR['Total runoff [m^3 s^-1]'], 'k-')
 ax.plot(dfq_DR['Baseflow [m^3 s^-1]'], 'b-')
 ax.scatter(dfe_DR['Peakflow starts'], 
-           dfq_DR['Total runoff [m^3 s^-1]'].loc[dfe_DR['Peakflow starts']],
+           dfq_DR['Baseflow [m^3 s^-1]'].loc[dfe_DR['Peakflow starts']],
            color='g')
 ax.scatter(dfe_DR['Peakflow ends'], 
-           dfq_DR['Total runoff [m^3 s^-1]'].loc[dfe_DR['Peakflow ends']], 
+           dfq_DR['Baseflow [m^3 s^-1]'].loc[dfe_DR['Peakflow ends']], 
            color='r')
 ax.set_yscale('log')
 
@@ -284,48 +285,74 @@ fit = results_BR.fittedvalues
 vmax = max([dfe_BR['Qb0'].max(), dfe_DR['Qb0'].max()])
 vmin = max([dfe_BR['Qb0'].min(), dfe_DR['Qb0'].min()])
 
-axs[0].scatter(dfe_BR['P'], dfe_BR['Qf'], c=dfe_BR['Qb0'], cmap='plasma', vmin=vmin, vmax=vmax, alpha=0.6)
-axs[0].plot(dfe_BR['P'], np.exp(fit), "b-", alpha=0.5)
-axs[0].fill_between(dfe_BR['P'], np.exp(iv_l) , np.exp(iv_u), alpha=0.15, color='gray')
-axs[0].axline([0,0], [1,1], color='k', linestyle='--')
+axs[1].scatter(dfe_BR['P'], dfe_BR['Qf'], c=dfe_BR['Qb0'], cmap='plasma', vmin=vmin, vmax=vmax, alpha=0.6)
+axs[1].plot(dfe_BR['P'], np.exp(fit), "b-", alpha=0.5)
+axs[1].fill_between(dfe_BR['P'], np.exp(iv_l) , np.exp(iv_u), alpha=0.15, color='gray')
+axs[1].axline([0,0], [1,1], color='k', linestyle='--')
 axs[1].text(0.1, 
             0.9, 
             r'$a = %.3f \pm %.3f$'%(results_BR.params[1], results_BR.bse[1]), 
-            transform=axs[0].transAxes
+            transform=axs[1].transAxes
             )
-axs[0].set_ylim((0.005,60))
-axs[0].set_xlim((1,110))
-axs[0].set_yscale('log')
-axs[0].set_xscale('log')
-axs[0].set_ylabel('Event Q (mm)')
-axs[0].set_xlabel('Event P (mm)')
-axs[0].set_title('Baisman Run')
-axs[0].set_aspect(0.7)
+axs[1].set_ylim((0.005,60))
+axs[1].set_xlim((2,110))
+axs[1].set_yscale('log')
+axs[1].set_xscale('log')
+axs[1].set_ylabel('Event Q (mm)')
+axs[1].set_xlabel('Event P (mm)')
+axs[1].set_title('Baisman Run')
+axs[1].set_aspect(0.6)
 
 pred_ols = results_DR.get_prediction()
 iv_l = pred_ols.summary_frame()["obs_ci_lower"]
 iv_u = pred_ols.summary_frame()["obs_ci_upper"]
 fit = results_DR.fittedvalues
 
-sc = axs[1].scatter(dfe_DR['P'], dfe_DR['Qf'], c=dfe_DR['Qb0'], cmap='plasma', vmin=vmin, vmax=vmax, alpha=0.6)
-axs[1].plot(dfe_DR['P'], np.exp(fit), "b-", alpha=0.5)
-axs[1].fill_between(dfe_DR['P'], np.exp(iv_l) , np.exp(iv_u), alpha=0.15, color='gray')
-axs[1].axline([0,0], [1,1], color='k', linestyle='--')
-axs[1].text(0.1, 
+sc = axs[0].scatter(dfe_DR['P'], dfe_DR['Qf'], c=dfe_DR['Qb0'], cmap='plasma', vmin=vmin, vmax=vmax, alpha=0.6)
+axs[0].plot(dfe_DR['P'], np.exp(fit), "b-", alpha=0.5)
+axs[0].fill_between(dfe_DR['P'], np.exp(iv_l) , np.exp(iv_u), alpha=0.15, color='gray')
+axs[0].axline([0,0], [1,1], color='k', linestyle='--')
+axs[0].text(0.1, 
             0.9, 
             r'$a = %.3f \pm %.3f$'%(results_DR.params[1], results_DR.bse[1]), 
-            transform=axs[1].transAxes
+            transform=axs[0].transAxes
             )
-axs[1].set_ylim((0.005,60))
-axs[1].set_xlim((1,110))
-axs[1].set_yscale('log')
-axs[1].set_xscale('log')
-axs[1].set_ylabel('Event Q (mm)')
-axs[1].set_xlabel('Event P (mm)')
-axs[1].set_title('Druids Run')
-axs[1].set_aspect(0.7)
+axs[0].set_ylim((0.005,60))
+axs[0].set_xlim((2,110))
+axs[0].set_yscale('log')
+axs[0].set_xscale('log')
+axs[0].set_ylabel('Event Q (mm)')
+axs[0].set_xlabel('Event P (mm)')
+axs[0].set_title('Druids Run')
+axs[0].set_aspect(0.6)
 fig.colorbar(sc, label='Initial Baseflow (mm/d)')
 
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png')
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png')
 # %% O'loughlin analysis
 
+
+fig, axs = plt.subplots(ncols=2, figsize=(10,5))
+axs[0].scatter(1/dfe_DR['Qb0'], dfe_DR['Qf']/dfe_DR['P'], c=dfe_DR['P'], norm=colors.LogNorm(vmin=4, vmax=100))
+axs[0].set_xscale('log')
+axs[0].set_yscale('log')
+# axs[0].set_ylim((-0.01,0.5))
+# axs[0].set_xlim((0.5,2.5))
+axs[0].set_ylabel('Event Runoff Ratio (-)')
+axs[0].set_xlabel(r'$1/Q_0$ $(mm/d)^{-1}$')
+axs[0].set_title('Druids Run')
+# axs[0].set_aspect(1)
+
+sc = axs[1].scatter(1/dfe_BR['Qb0'], dfe_BR['Qf']/dfe_BR['P'], c=dfe_BR['P'], norm=colors.LogNorm(vmin=4, vmax=100))
+axs[1].set_xscale('log')
+axs[1].set_yscale('log')
+# axs[1].set_ylim((-0.01,0.5))
+# axs[1].set_xlim((0.5,2.5))
+axs[1].set_ylabel('Event Runoff Ratio (-)')
+axs[1].set_xlabel(r'$1/Q_0$ $(mm/d)^{-1}$')
+axs[1].set_title('Baisman Run')
+
+# axs[1].set_aspect(1)
+
+fig.colorbar(sc, label='Event Precipitation (mm)')
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR_Q0.png')
+# %%
