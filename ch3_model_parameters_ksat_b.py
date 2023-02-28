@@ -4,6 +4,7 @@
 import os
 import numpy as np
 import pandas as pd
+import scipy.stats as st
 import matplotlib.pyplot as plt
 import pickle
 from itertools import product
@@ -139,6 +140,39 @@ df_params['p'] = df_params['ds']/(df_params['tr'] + df_params['tb'])
 # from USGS streamstats
 # df_params['p'] = 45.6 * 0.0254 / (3600*24*365) # m/s
 
+fig, axs = plt.subplots(nrows=3, figsize=(4,7))
+
+x_ds = np.linspace(min(storm_depths), max(storm_depths), 100)
+ds = np.mean(storm_depths)
+axs[0].hist(storm_depths, bins=30, density=True)
+axs[0].plot(x_ds, 1/ds*np.exp(-x_ds/ds))
+axs[0].set_xlabel('storm depth')
+
+x_tr = np.linspace(min(storm_durs), max(storm_durs), 100)
+tr = np.mean(storm_durs)
+axs[1].hist(storm_durs, bins=30, density=True)
+axs[1].plot(x_tr, 1/tr*np.exp(-x_tr/tr))
+axs[1].set_xlabel('storm duration')
+
+x_tb = np.linspace(min(interstorm_durs), max(interstorm_durs), 100)
+tb = np.mean(interstorm_durs)
+axs[2].hist(interstorm_durs, bins=30, density=True)
+axs[2].plot(x_tb, 1/tb*np.exp(-x_tb/tb))
+axs[2].set_xlabel('interstorm duration')
+fig.tight_layout()
+
+# K-S test suggests that these aren't good fits, but we're working with it anyway
+dist = st.expon
+args = dist.fit(storm_depths)
+st.kstest(storm_depths, dist.cdf, args)
+
+dist = st.expon
+args = dist.fit(storm_durs)
+st.kstest(storm_durs, dist.cdf, args)
+
+dist = st.expon
+args = dist.fit(interstorm_durs)
+st.kstest(interstorm_durs, dist.cdf, args)
 
 #%% potential evapotranspiration
 
