@@ -7,12 +7,9 @@ Script to make figures for ch.3, first focusing on topographic analysis
 
 import numpy as np
 import pandas as pd
-import pickle
-import glob
 import rasterio as rd
 from sklearn.neighbors import KernelDensity
-from scipy.stats import binned_statistic
-from sklearn.linear_model import LinearRegression
+from scipy.stats import norm
 import statsmodels.api as sm
 
 import matplotlib.pyplot as plt
@@ -51,6 +48,7 @@ def equalObs(x, nbin):
                      np.arange(nlen),
                      np.sort(x))
 
+figpath = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
                      
 #%%
 
@@ -60,8 +58,6 @@ df_U = pd.read_csv(path+name) # (Mg km-2 yr-1)
 df_U['U'] = df_U[' 10be_rate'] * 1e3 * 1e-6 * (1/2700)
 
 #%% Channels and Hillslopes  on hillshade (projected coordinate method)
-
-
 
 # path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
 # name = 'baltimore2015_DR1_hs.bil' # hillshade
@@ -103,10 +99,6 @@ inds = df2['basin_id'] == 71 # Baisman Run
 projected_coords = ax.projection.transform_points(ccrs.Geodetic(), df2['longitude'][inds], df2['latitude'][inds])
 ax.scatter(projected_coords[:,0], projected_coords[:,1], s=0.5, c='gold', transform=ccrs.UTM(utm)) #c='g',
 
-# projected_coords = ax.projection.transform_points(ccrs.Geodetic(), df2['longitude'], df2['latitude'])
-# ax.scatter(projected_coords[:,0], projected_coords[:,1], s=1, c=df2['basin_id'], transform=ccrs.UTM(utm)) #c='g',
-
-
 # Limit the extent of the map to a small longitude/latitude range.
 ax.set_extent(Extent, crs=ccrs.UTM(utm))
 ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False)
@@ -131,386 +123,164 @@ df_ht_DR = pd.read_csv(path1 + name_ht_DR)
 df_ht_DR = df_ht_DR[df_ht_DR['BasinID']==99]
 df_ht_BR = pd.read_csv(path2 + name_ht_BR)
 df_ht_BR = df_ht_BR[df_ht_BR['BasinID']==71]
-#%%
 
-# calculate kernel density
-xx_DR, yy_DR, zz_DR = kde2D(df_ht_DR['Lh']/max(df_ht_DR['Lh']), df_ht_DR['R']/max(df_ht_DR['R']), 0.05, xbins=200j, ybins=200j)
-xx_BR, yy_BR, zz_BR = kde2D(df_ht_BR['Lh']/max(df_ht_BR['Lh']), df_ht_BR['R']/max(df_ht_BR['R']), 0.05, xbins=200j, ybins=200j)
-
-#%% plot kernel density
-
-# hex_colors = ['000000', '083D77', 'F95738', 'EE964B', 'F4D35E', 'EBEBD3'] # based on https://coolors.co/palette/083d77-ebebd3-f4d35e-ee964b-f95738
-# hex_decs = [0, 0.1, 0.6, 0.8, 0.9, 1.0 ]
-hex_colors = ['FFFFFF', '00B4D8', '03045E']
-hex_decs = [0, 0.5, 1.0]
-
-cmap1 = get_continuous_cmap(hex_colors, float_list=hex_decs)
-
-# plot kernel density
-fig, axs = plt.subplots(ncols=2, figsize=(8,4))
-axs[0].pcolormesh(xx_DR*max(df_ht_DR['Lh']), yy_DR* max(df_ht_DR['R']), zz_DR, cmap=cmap1, shading='auto')
-axs[0].set_xlabel('Distance to channel (m)')
-axs[0].set_ylabel('Height above channel (m)')
-axs[0].set_title('Druids Run')
-axs[0].set_xlim((0,1000))
-axs[0].set_ylim((0,25))
-# axs[0].colorbar(label='Density')
-pc = axs[1].pcolormesh(xx_BR*max(df_ht_BR['Lh']), yy_BR*max(df_ht_BR['R']), zz_BR, cmap=cmap1, shading='auto')
-axs[1].set_xlabel('Distance to channel (m)')
-axs[1].set_ylabel('Height above channel (m)')
-axs[1].set_title('Baisman Run')
-axs[1].set_xlim((0,1000))
-axs[1].set_ylim((0,25))
-# fig.colorbar(pc, label='Density')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/hillslopelen_relief.png')
-
-plt.show()
-# %% 
-# boxplots of hillslope length and relief
-
-Lh = [df_ht_DR['Lh'], df_ht_BR['Lh']]
-R = [df_ht_DR['R'], df_ht_BR['R']]
-fig, axs = plt.subplots(ncols=2, figsize=(8,5))
-axs[0].boxplot(Lh, whis=(5,95), vert=True, labels=['Druids Run', 'Baisman Run'])
-axs[0].set_ylim((-10,1200))
-axs[0].set_ylabel('Length [m]')
-axs[0].set_title('Hillslope Length')
-axs[1].boxplot(R, whis=(5,95), vert=True, labels=['Druids Run', 'Baisman Run'])
-axs[1].set_title('Hillslope Relief')
-axs[1].set_ylabel('Height [m]')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Lh_R_boxplot.png')
-
-#%%
-# violin plots of hillslope length and relief
+#%% violin plots of hillslope length and relief
 
 pos   = [1, 2]
 label = ['Druids Run', 'Baisman Run']
+clrs = ['firebrick', 'royalblue']
 
-Lh = [df_ht_DR['Lh'], df_ht_BR['Lh']]
-R = [df_ht_DR['R'], df_ht_BR['R']]
+Lh = [df_ht_DR['Lh'].values, df_ht_BR['Lh'].values]
+R = [df_ht_DR['R'].values, df_ht_BR['R'].values]
+
 fig, axs = plt.subplots(ncols=2, figsize=(8,5))
-axs[0].violinplot(Lh, pos, vert=True, showmeans=True)
+parts = axs[0].violinplot(Lh, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['Lh'].values, [25, 50, 75])
+BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Lh'].values, [25, 50, 75])
+dfLh = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Lh'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Lh'].mean()]], 
+                    columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+dfLh.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Lh_stats.csv', float_format="%.1f")
+axs[0].vlines(pos, [DRq1, BRq1], [DRq3, BRq3], color='k', linestyle='-', lw=5)
 axs[0].set_ylim((-10,1200))
 axs[0].set_xticks(pos)
 axs[0].set_xticklabels(label)
-axs[0].set_ylabel('Length [m]')
+axs[0].set_ylabel('Length (m)')
 axs[0].set_title('Hillslope Length')
 
-axs[1].violinplot(R, pos, vert=True, showmeans=True)
-# axs[1].set_ylim((-10,1200))
+parts = axs[1].violinplot(R, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['R'].values, [25, 50, 75])
+BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['R'].values, [25, 50, 75])
+dfR = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['R'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['R'].mean()]], 
+                    columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+dfR.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Relief_stats.csv', float_format="%.1f")
+axs[1].vlines(pos, [DRq1, BRq1], [DRq3, BRq3], color='k', linestyle='-', lw=5)
+
 axs[1].set_xticks(pos)
 axs[1].set_xticklabels(label)
 axs[1].set_title('Hillslope Relief')
-axs[1].set_ylabel('Height [m]')
+axs[1].set_ylabel('Height (m)')
 plt.show()
 fig.tight_layout()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Lh_R_violinplot.png')
+plt.savefig(figpath+'Lh_R_violinplot.png')
+plt.savefig(figpath+'Lh_R_violinplot.pdf')
 
+#%% Violin plots of ridgetop curvature and E*
 
-#%% 
-# boxplots of ridgetop curvature
-
-plt.figure(figsize=(4,4))
-plt.boxplot([df_ht_DR['Cht'], df_ht_BR['Cht']], 
-            whis=(5,95), 
-            vert=True, 
-            widths=0.8,
-            labels=['Druids Run', 'Baisman Run'])
-plt.ylim(( -0.1, 0.005))
-plt.ylabel('Ridgetop Curvature [1/m]')
-plt.tight_layout()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Cht_boxplot.png')
-
-#%% 
-# Violin plots of ridgetop curvature
-
+# drop some bad points with very large negative curvatures
 cBR = df_ht_BR['Cht'] > -1
 cDR = df_ht_DR['Cht'] > -1
 
 pos   = [1, 2]
 label = ['Druids Run', 'Baisman Run']
+Cht = [np.log10(-df_ht_DR['Cht'][cDR]), np.log10(-df_ht_BR['Cht'][cBR])]
+Estar = [np.log10(df_ht_DR['E_Star'][cDR]), np.log10(df_ht_BR['E_Star'][cBR])]
 
-fig, ax = plt.subplots(figsize=(4,4))
-ax.violinplot([df_ht_DR['Cht'][cDR], df_ht_BR['Cht'][cBR]],
-            pos,
-            vert=True, 
-            showmeans=True,
-            )
-# plt.ylim(( -0.1, 0.005))
-ax.set_ylabel('Ridgetop Curvature [1/m]')
-ax.set_xticks(pos)
-ax.set_xticklabels(label)
+fig, axs = plt.subplots(ncols=2, figsize=(8,5))
+parts = axs[0].violinplot(Cht, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['Cht'][cDR], [25, 50, 75])
+BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Cht'][cBR], [25, 50, 75])
+dfCht = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Cht'][cDR].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Cht'][cBR].mean()]], 
+                    columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+dfCht.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Cht_stats.csv', float_format="%.3e")
+axs[0].vlines(pos, np.log10(-np.array([DRq1, BRq1])), np.log10(-np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
+# axs[0].set_ylim((-10,1200))
+axs[0].set_xticks(pos)
+axs[0].set_xticklabels(label)
+axs[0].set_ylabel(r'$log_{10} (-C_{ht})$ (1/m)')
+axs[0].set_title('Ridgetop Curvature')
+
+parts = axs[1].violinplot(Estar, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+DRq1, DRmed, DRq3, DR95, DR99 = np.percentile(df_ht_DR['E_Star'][cDR], [25, 50, 75, 95, 99])
+BRq1, BRmed, BRq3, BR95, BR99 = np.percentile(df_ht_BR['E_Star'][cBR], [25, 50, 75, 95, 99])
+dfR = pd.DataFrame(data=[[DRmed, DR95, DR99, df_ht_DR['E_Star'][cDR].mean()], [BRmed, BR95, BR99, df_ht_BR['E_Star'][cBR].mean()]], 
+                    columns=['q50','q95','q99', 'mean'], index=['DR','BR'])
+dfR.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_estar_stats.csv', float_format="%.1f")
+axs[1].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
+axs[1].axhline(y=0, linestyle='--', color='k', label='E*=1')
+axs[1].set_xticks(pos)
+axs[1].set_xticklabels(label)
+axs[1].set_title('Dimensionless Erosion Rate')
+axs[1].set_ylabel(r'$log_{10} (E^*)$ (-)')
+plt.show()
 fig.tight_layout()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Cht_violinplot.png')
+plt.savefig(figpath+'Cht_estar_violinplot.png')
+plt.savefig(figpath+'Cht_estar_violinplot.pdf')
+
 
 # %% 
 # calculate some statistics
 
-cBR = df_ht_BR['Cht'] > -1
-cDR = df_ht_DR['Cht'] > -1
+# method for calculating std from q1 and q3 https://stats.stackexchange.com/a/256496
+n = 10 # number of samples of piedmont in Portenga et al.
+E_std = (df_U['U'][4] - df_U['U'][1]) / (2 * norm.ppf((0.75 * n - 0.125) / (n + 0.25)))
+E_mean = df_U['U'][2]
 
-DR = []
-BR = []
-Cht_stats = {}
-BR.append(np.median(df_ht_BR['Cht'][cBR]).round(5))
-DR.append(np.median(df_ht_DR['Cht'][cDR]).round(5))
-# Cht_stats['Mean_BR'] = np.mean(df_ht_BR['Cht'][cBR]).round(5)
-# Cht_stats['Mean_DR'] = np.mean(df_ht_DR['Cht'][cDR]).round(5)
+# generate normally distributed random samples for erosion
+E_gen = E_std * np.random.randn(10000) + E_mean
 
-# log-transformed 
-mean_log = np.mean(np.log(-df_ht_DR['Cht'][cDR]))
-std_log = np.std(np.log(-df_ht_DR['Cht'][cDR]))
-DR.append(-np.exp(mean_log - std_log))
-DR.append(-np.exp(mean_log + std_log))
-DR.append(-np.exp(mean_log))
+# generate random samples for curvature by selecting with replacement
+Cht_DR_gen = np.random.choice(df_ht_DR['Cht'][cDR], 10000, replace=True)
+Cht_BR_gen = np.random.choice(df_ht_BR['Cht'][cBR], 10000, replace=True)
 
-mean_log = np.mean(np.log(-df_ht_BR['Cht'][cBR]))
-std_log = np.std(np.log(-df_ht_BR['Cht'][cBR]))
-BR.append(-np.exp(mean_log - std_log))
-BR.append(-np.exp(mean_log + std_log))
-BR.append(-np.exp(mean_log))
-
-# data = np.array(list(zip(DR, BR)))
-df_HT_stats = pd.DataFrame([DR, BR], index=['DR', 'BR'], columns=['Med','log_high', 'log_low', 'log_mean'])
-df_HT_stats.to_csv(path+'df_HT_stats.csv')
-
-E = df_U['U'][2]
+# assume rho ratio is just one value
 rho_ratio = 2
 
-df_D_stats = (rho_ratio*E)/(-df_HT_stats)
+# calculate diffusivity for each combination
+D_DR = (rho_ratio * E_gen)/(-Cht_DR_gen)
+D_BR = (rho_ratio * E_gen)/(-Cht_BR_gen)
 
+# get quantiles
+q25_DR, med_DR, q75_DR = np.percentile(D_DR, [25, 50, 75])
+q25_BR, med_BR, q75_BR = np.percentile(D_BR, [25, 50, 75])
 
-# %% 
-# Violin plots of effective curvature R/Lh^2
-
-C_DR = df_ht_DR['R']/df_ht_DR['Lh']**2
-C_BR = df_ht_BR['R']/df_ht_BR['Lh']**2
-
-cBR = C_BR < 0.1
-cDR = C_DR < 0.1
-
-DR = []
-BR = []
-BR.append(-np.median(C_BR[cBR]).round(5))
-DR.append(-np.median(C_DR[cDR]).round(5))
-
-# log-transformed 
-mean_log = np.mean(np.log(C_DR[cDR]))
-std_log = np.std(np.log(C_DR[cDR]))
-DR.append(-np.exp(mean_log - std_log))
-DR.append(-np.exp(mean_log + std_log))
-DR.append(-np.exp(mean_log))
-
-mean_log = np.mean(np.log(C_BR[cBR]))
-std_log = np.std(np.log(C_BR[cBR]))
-BR.append(-np.exp(mean_log - std_log))
-BR.append(-np.exp(mean_log + std_log))
-BR.append(-np.exp(mean_log))
-
-df_Ceff_stats = pd.DataFrame([DR, BR], index=['DR', 'BR'], columns=['Med','log_high', 'log_low', 'log_mean'])
-
-#%%
-
-
-pos   = [1, 2]
-label = ['Druids Run', 'Baisman Run']
-
-fig, ax = plt.subplots(figsize=(4,4))
-ax.violinplot([np.log10(C_DR), np.log10(C_BR)],
-            pos,
-            vert=True, 
-            showmeans=True,
-            )
-# plt.ylim(( -0.1, 0.005))
-ax.set_ylabel('Log10 Curvature R/Lh2')
-ax.set_xticks(pos)
-ax.set_xticklabels(label)
-fig.tight_layout()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/HillCurv_violinplot.png')
-plt.show()
-
-# %% 
-# Violin plots of ridgetop and effective curvature together
-Ceff_BR = df_ht_BR['R']/df_ht_BR['Lh']**2
-Ceff_DR = df_ht_DR['R']/df_ht_DR['Lh']**2
-
-cht_BR = df_ht_BR['Cht'] > -1
-cht_DR = df_ht_DR['Cht'] > -1
-# cBR = Ceff_BR < 0.1
-# cDR = Ceff_DR < 0.1
-
-pos   = [1, 2]
-label = ['Druids Run', 'Baisman Run']
-
-fig, axs = plt.subplots(figsize=(8,4), ncols=2)
-axs[0].violinplot([np.log10(-df_ht_DR['Cht'][cht_DR]), np.log10(-df_ht_BR['Cht'][cht_BR])],
-            pos,
-            vert=True, 
-            showmeans=True,
-            )
-# axs[0].set_yscale('log')
-axs[0].set_ylim((-7,1))
-axs[0].set_ylabel(r'$\log_{10}(-C_{ht})$')
-axs[0].set_xticks(pos)
-axs[0].set_xticklabels(label)
-axs[0].set_title('Hilltop Curvature')
-
-axs[1].violinplot([np.log10(Ceff_DR), np.log10(Ceff_BR)],
-            pos,
-            vert=True, 
-            showmeans=True,
-            )
-# axs[1].set_yscale('log')
-axs[1].set_ylim((-7,1))
-axs[1].set_ylabel(r'$\log_{10}(R_h/L_h^2)$')
-axs[1].set_xticks(pos)
-axs[1].set_xticklabels(label)
-axs[1].set_title('Effective Hillslope Curvature')
-fig.tight_layout()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/HT_Eff_Curv_violinplot.png')
-
-# %% Violin plots of E*
-
-cBR = df_ht_BR['E_Star'] < 1e6
-cDR = df_ht_DR['E_Star'] < 1e6
-
-pos   = [1, 2]
-label = ['Druids Run', 'Baisman Run']
-
-fig, ax = plt.subplots(figsize=(4,4))
-ax.violinplot([np.log10(df_ht_DR['E_Star'][cDR]), np.log10(df_ht_BR['E_Star'][cBR])],
-            pos,
-            vert=True, 
-            showmeans=True,
-            )
-ax.axhline(y=1, linestyle='--', color='k', label='E*=1')
-# plt.ylim(( -0.1, 0.005))
-ax.set_ylabel(r'$log_{10} (E^*)$')
-ax.set_xticks(pos)
-ax.set_xticklabels(label)
-ax.legend(loc='lower center', )
-fig.tight_layout()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Estar_violinplot.png')
-
-#%% slope-area of channels
-
-# Druids Run
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
-somask_name = 'baltimore2015_DR1_D_SO.bil' # stream order raster
-slope_name = 'baltimore2015_DR1_SLOPE.bil'
-area_name = 'baltimore2015_DR1_d8_area.bil'
-basin_name = 'baltimore2015_DR1_AllBasins.bil'
-
-somsk = rd.open(path + somask_name)
-ar = rd.open(path + area_name)
-slp = rd.open(path + slope_name)
-bsn = rd.open(path + basin_name)
-
-streams = somsk.read(1) > 0
-basin = bsn.read(1) > 0 
-mask = np.logical_and(streams, basin)
-area_DR = ar.read(1)[mask]
-slope_DR = slp.read(1)[mask]
-
-area_DR = area_DR[slope_DR>0]
-slope_DR = slope_DR[slope_DR>0]
-
-
-# Baisman Run
-path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
-somask_name = 'baltimore2015_BR_D_SO.bil'
-slope_name = 'baltimore2015_BR_SLOPE.bil' 
-area_name = 'baltimore2015_BR_d8_area.bil'
-basin_name = 'baltimore2015_BR_AllBasins.bil'
-
-somsk = rd.open(path + somask_name)
-ar = rd.open(path + area_name)
-slp = rd.open(path + slope_name)
-bsn = rd.open(path + basin_name)
-
-streams = somsk.read(1) > 0
-basin = bsn.read(1) > 0 
-mask = np.logical_and(streams, basin)
-area_BR = ar.read(1)[mask]
-slope_BR = slp.read(1)[mask]
-
-area_BR = area_BR[slope_BR>0]
-slope_BR = slope_BR[slope_BR>0]
-
-
-#%% slope-area relationship
-
-slope = slope_BR
-area = area_BR
-
-# linear model
-X = np.log(area).reshape((-1,1))
-y = np.log(slope)
-# X = np.log(bin_center).reshape((-1,1))
-# y = np.log(s_mean)
-x = sm.add_constant(X)
-model = sm.OLS(y, x).fit()
-df_stats = (model.summary2().tables[1])
-
-df_stats = df_stats.T
-df_stats.drop(['Std.Err.', 't', 'P>|t|'], inplace=True)
-df_stats['concavity'] = -df_stats['x1']
-df_stats['steepness'] = np.exp(df_stats['const'])
-# df_stats['m_guess'] = 0.5
-# df_stats['n'] = df_stats['m_guess']/df_stats['concavity']
-df_stats['n_guess'] = 1
-df_stats['K'] = df_U['U'][2]/df_stats['steepness']**(df_stats['n_guess'])
-
-#%% plot slope-area and fitted line
-
-# get binned data
-areax = equalObs(area, 30)
-s_mean, bin_edge, binnum = binned_statistic(area, slope, statistic='mean', bins=areax)
-s_std, _, _ = binned_statistic(area, slope, statistic='std', bins=areax)
-bin_center = bin_edge[:-1] + np.diff(bin_edge)
-
-#get fitted line
-X_pred = np.geomspace(np.min(areax),np.max(areax), 500) #.reshape(-1,1)
-y_pred = model.predict()
-
-fig, ax = plt.subplots(figsize=(6,5))
-ax.scatter(area, slope, alpha=0.1, s=1.5)
-ax.errorbar(bin_center, s_mean, s_std, linestyle='None', marker='o', color='k', markersize=4)
-ax.plot(np.exp(X), np.exp(y_pred), 'r--')
-ax.set_xscale('log')
-ax.set_yscale('log')
-ax.set_ylim((1e-4,0.3))
-ax.set_ylabel('Slope (m/m)')
-ax.set_xlabel('Area (m)')
-fig.tight_layout()
-# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/slope_area_DR.png')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/slope_area_BR.png')
-
-
-#%%
-
-x = equalObs(area_DR, 30)
-s_mean_DR, bin_edge_DR, binnum_DR = binned_statistic(area_DR, slope_DR, statistic='mean', bins=x)
-s_std_DR, _, _ = binned_statistic(area_DR, slope_DR, statistic='std', bins=x)
-bin_center_DR = bin_edge_DR[:-1] + np.diff(bin_edge_DR)
-
-x = equalObs(area_BR, 30)
-s_mean_BR, bin_edge_BR, binnum_BR = binned_statistic(area_BR, slope_BR, statistic='mean', bins=x)
-s_std_BR, _, _ = binned_statistic(area_BR, slope_BR, statistic='std', bins=x)
-bin_center_BR = bin_edge_BR[:-1] + np.diff(bin_edge_BR)
-
-fig, ax = plt.subplots(figsize=(6,5))
-ax.errorbar(bin_center_DR, s_mean_DR, s_std_DR, linestyle='None', marker='o', color='r', markersize=4, label='Druid')
-ax.errorbar(bin_center_BR, s_mean_BR, s_std_BR, linestyle='None', marker='o', color='b', markersize=4, label='Baisman')
-ax.set_xscale('log')
-ax.set_yscale('log')
-ax.set_ylabel('Slope (m/m)')
-ax.set_xlabel('Area (m)')
-fig.legend(frameon=False)
-fig.tight_layout()
+df_D_stats = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]], 
+                    columns=['q25','q50','q75'], index=['DR','BR'])
 
 
 # %% plot basin
+
+# Druids Run
+basin_name = 'baltimore2015_DR1_AllBasins.bil'
+bsn = rd.open(path + basin_name)
+basin = bsn.read(1) > 0 
+
+# Baisman Run
+path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+basin_name = 'baltimore2015_BR_AllBasins.bil'
+bsn = rd.open(path + basin_name)
+basin = bsn.read(1) > 0 
 
 dx = bsn.transform[0]
 bounds = bsn.bounds
