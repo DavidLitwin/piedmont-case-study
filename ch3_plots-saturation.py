@@ -122,15 +122,15 @@ for i in range(len(paths)):
 
 #%% assemble all saturation dataframes
 
-site = 'DR'
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
-TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
-curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
+# site = 'DR'
+# path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
+# TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
+# curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
 
-# site = 'BR'
-# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
-# TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
-# curvfile = "LSDTT/10m_window/baltimore2015_BR_CURV.bil" # Baisman Run
+site = 'BR'
+path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
+TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
+curvfile = "LSDTT/10m_window/baltimore2015_BR_CURV.bil" # Baisman Run
 
 dfs = []
 paths = glob.glob(path + "saturation/transects_*.csv")
@@ -358,7 +358,7 @@ Tmean = lambda b0, b1: np.exp((-b0)/b1)
 covs = model.cov_params()
 means = model.params
 
-samples = np.random.multivariate_normal(means, covs, size=10000)
+samples = np.random.multivariate_normal(means, covs, size=100000)
 
 Tcalc = Tmean(samples[:,0], samples[:,1])
 T_median = np.median(Tcalc)
