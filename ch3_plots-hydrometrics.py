@@ -95,6 +95,9 @@ for i in range(len(dfe_BR)):
     event_P[i] = np.sum(dfq_BR['P (mm)'].loc[dfe_BR['Precip starts'].iloc[i]:dfe_BR['Precip ends'].iloc[i]])
 dfe_BR['P'] = event_P
 
+# remove where event precip is < 1 mm
+dfe_BR = dfe_BR.drop(dfe_BR.index[dfe_BR['P'] < 1])
+
 dfe_BR['Qb0'] = dfe_BR['Baseflow [m^3 s^-1]'] * 3600 * 24 * (1/area_BR) * 1000
 #%% Event runoff ratio
 
@@ -109,31 +112,39 @@ plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/f
 plt.show()
 
 #%%
-
 # plot baseflow and discharge with events
-fig, ax = plt.subplots()
-ax.plot(dfq_BR['Total runoff [m^3 s^-1]'], 'k-')
-ax.plot(dfq_BR['Baseflow [m^3 s^-1]'], 'b-')
+
+s = 8
+P_plot = dfq_BR['P (mm)'] * 4 # mm/hr
+Q_plot = dfq_BR['Total runoff [m^3 s^-1]'] * (1/area_BR) * 3600 * 1000 # 1/m2 sec/hr mm/m
+Qb_plot = dfq_BR['Baseflow [m^3 s^-1]'] * (1/area_BR) * 3600 * 1000 # 1/m2 sec/hr mm/m
+
+
+fig, ax = plt.subplots(figsize=(8,4))
+ax.plot(Q_plot, 'k-')
+ax.plot(Qb_plot, 'b-')
 ax.scatter(dfe_BR['Peakflow starts'], 
-           dfq_BR['Baseflow [m^3 s^-1]'].loc[dfe_BR['Peakflow starts']],
-           color='g')
+           Qb_plot.loc[dfe_BR['Peakflow starts']],
+           color='g', s=s, zorder=100)
 ax.scatter(dfe_BR['Peakflow ends'], 
-           dfq_BR['Baseflow [m^3 s^-1]'].loc[dfe_BR['Peakflow ends']], 
-           color='r')
+           Qb_plot.loc[dfe_BR['Peakflow ends']], 
+           color='r', s=s, zorder=101)
 ax.set_yscale('log')
+ax.set_ylabel('Q (mm/hr)')
 
 ax1 = ax.twinx()
-ax1.plot(dfq_BR['P (mm)'])
+ax1.plot(P_plot)
 ax1.scatter(dfe_BR['Precip starts'], 
-           dfq_BR['P (mm)'].loc[dfe_BR['Precip starts']],
-           color='g')
+           P_plot.loc[dfe_BR['Precip starts']],
+           color='g', s=s, zorder=102)
 ax1.scatter(dfe_BR['Precip ends'], 
-           dfq_BR['P (mm)'].loc[dfe_BR['Precip ends']], 
-           color='r')
-ax1.set_ylim(2*dfq_BR['P (mm)'].max(), 0)
-ax1.set_ylabel('P (mm)')
+           P_plot.loc[dfe_BR['Precip ends']], 
+           color='r', s=s, zorder=103)
+ax1.set_ylim(2*P_plot.max(), 0)
+ax1.set_ylabel('P (mm/hr)')
 fig.autofmt_xdate()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BR_Q_P.png')
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BR_Q_P.png', transparent=True)
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BR_Q_P.pdf', transparent=True)
 
 # %% load Druids discharge
 
@@ -184,36 +195,44 @@ for i in range(len(dfe_DR)):
     event_P[i] = np.sum(dfq_DR['P (mm)'].loc[dfe_DR['Precip starts'].iloc[i]:dfe_DR['Precip ends'].iloc[i]])
 dfe_DR['P'] = event_P
 
-# remove where event precip is zero
-dfe_DR = dfe_DR.drop(dfe_DR.index[dfe_DR['P'] < 0.1])
+# remove where event precip is < 1 mm
+dfe_DR = dfe_DR.drop(dfe_DR.index[dfe_DR['P'] < 1])
 
 dfe_DR['Qb0'] = dfe_DR['Baseflow [m^3 s^-1]'] * 3600 * 24 * (1/area_DR) * 1000
 
 #%% plot baseflow and discharge with events
 
-fig, ax = plt.subplots()
-ax.plot(dfq_DR['Total runoff [m^3 s^-1]'], 'k-')
-ax.plot(dfq_DR['Baseflow [m^3 s^-1]'], 'b-')
+s = 8
+P_plot = dfq_DR['P (mm)'] * 4 # mm/hr
+Q_plot = dfq_DR['Total runoff [m^3 s^-1]'] * (1/area_DR) * 3600 * 1000 # 1/m2 sec/hr mm/m
+Qb_plot = dfq_DR['Baseflow [m^3 s^-1]'] * (1/area_DR) * 3600 * 1000 # 1/m2 sec/hr mm/m
+
+
+fig, ax = plt.subplots(figsize=(8,4))
+ax.plot(Q_plot, 'k-')
+ax.plot(Qb_plot, 'b-')
 ax.scatter(dfe_DR['Peakflow starts'], 
-           dfq_DR['Baseflow [m^3 s^-1]'].loc[dfe_DR['Peakflow starts']],
-           color='g')
+           Qb_plot.loc[dfe_DR['Peakflow starts']],
+           color='g', s=s, zorder=100)
 ax.scatter(dfe_DR['Peakflow ends'], 
-           dfq_DR['Baseflow [m^3 s^-1]'].loc[dfe_DR['Peakflow ends']], 
-           color='r')
+           Qb_plot.loc[dfe_DR['Peakflow ends']], 
+           color='r', s=s, zorder=101)
 ax.set_yscale('log')
+ax.set_ylabel('Q (mm/hr)')
 
 ax1 = ax.twinx()
-ax1.plot(dfq_DR['P (mm)'])
+ax1.plot(P_plot)
 ax1.scatter(dfe_DR['Precip starts'], 
-           dfq_DR['P (mm)'].loc[dfe_DR['Precip starts']],
-           color='g')
+           P_plot.loc[dfe_DR['Precip starts']],
+           color='g', s=s, zorder=102)
 ax1.scatter(dfe_DR['Precip ends'], 
-           dfq_DR['P (mm)'].loc[dfe_DR['Precip ends']], 
-           color='r')
-ax1.set_ylim(2*dfq_DR['P (mm)'].max(), 0)
-ax1.set_ylabel('P (mm)')
+           P_plot.loc[dfe_DR['Precip ends']], 
+           color='r', s=s, zorder=103)
+ax1.set_ylim(2*P_plot.max(), 0)
+ax1.set_ylabel('P (mm/hr)')
 fig.autofmt_xdate()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DR_Q_P.png')
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DR_Q_P.png', transparent=True)
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DR_Q_P.pdf', transparent=True)
 
 #%% Event runoff ratio: Druids
 
@@ -275,7 +294,7 @@ results_DR = model_DR.fit()
 
 #%% runoff events with regression
 
-fig, axs = plt.subplots(ncols=2, figsize=(10,5))
+fig, axs = plt.subplots(ncols=2, constrained_layout=True, figsize=(8,4))
 
 pred_ols = results_BR.get_prediction()
 iv_l = pred_ols.summary_frame()["obs_ci_lower"]
@@ -291,7 +310,8 @@ axs[1].fill_between(dfe_BR['P'], np.exp(iv_l) , np.exp(iv_u), alpha=0.15, color=
 axs[1].axline([0,0], [1,1], color='k', linestyle='--')
 axs[1].text(0.1, 
             0.9, 
-            r'$a = %.3f \pm %.3f$'%(results_BR.params[1], results_BR.bse[1]), 
+            r'$r^2 = %.2f$'%results_BR.rsquared,
+            #r'$a = %.3f \pm %.3f$'%(results_BR.params[1], results_BR.bse[1]), 
             transform=axs[1].transAxes
             )
 axs[1].set_ylim((0.005,60))
@@ -301,7 +321,7 @@ axs[1].set_xscale('log')
 axs[1].set_ylabel('Event Q (mm)')
 axs[1].set_xlabel('Event P (mm)')
 axs[1].set_title('Baisman Run')
-axs[1].set_aspect(0.6)
+# axs[1].set_aspect(0.6)
 
 pred_ols = results_DR.get_prediction()
 iv_l = pred_ols.summary_frame()["obs_ci_lower"]
@@ -314,7 +334,8 @@ axs[0].fill_between(dfe_DR['P'], np.exp(iv_l) , np.exp(iv_u), alpha=0.15, color=
 axs[0].axline([0,0], [1,1], color='k', linestyle='--')
 axs[0].text(0.1, 
             0.9, 
-            r'$a = %.3f \pm %.3f$'%(results_DR.params[1], results_DR.bse[1]), 
+            r'$r^2 = %.2f$'%results_DR.rsquared,
+            #r'$a = %.3f \pm %.3f$'%(results_DR.params[1], results_DR.bse[1]), 
             transform=axs[0].transAxes
             )
 axs[0].set_ylim((0.005,60))
@@ -324,14 +345,24 @@ axs[0].set_xscale('log')
 axs[0].set_ylabel('Event Q (mm)')
 axs[0].set_xlabel('Event P (mm)')
 axs[0].set_title('Druids Run')
-axs[0].set_aspect(0.6)
-fig.colorbar(sc, label='Initial Baseflow (mm/d)')
+# axs[0].set_aspect(0.6)
+# cax = axs[1].inset_axes([1.04, 0.1, 0.05, 0.8])
+fig.colorbar(sc, ax=axs, label='Initial Baseflow (mm/d)')
 
-# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png')
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png', transparent=True)
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.pdf', transparent=True)
+
+df_rr_reg = pd.DataFrame(data=[[results_DR.params[1], results_DR.bse[1], results_DR.params[0], results_DR.bse[0], results_DR.rsquared],
+                               [results_BR.params[1], results_BR.bse[1], results_BR.params[0], results_BR.bse[0], results_BR.rsquared]],
+                               columns=['exp', 'exp_err', 'coeff', 'coeff_err', 'rsquared'], index=['DR','BR']
+                               )
+df_rr_reg.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_runoff_ratio_stats.csv', float_format="%.3f")
+
+
 # %% O'loughlin analysis
 
 
-fig, axs = plt.subplots(ncols=2, figsize=(10,5))
+fig, axs = plt.subplots(ncols=2, constrained_layout=True, figsize=(6,3))
 axs[0].scatter(1/dfe_DR['Qb0'], dfe_DR['Qf']/dfe_DR['P'], c=dfe_DR['P'], norm=colors.LogNorm(vmin=4, vmax=100))
 axs[0].set_xscale('log')
 axs[0].set_yscale('log')
@@ -354,5 +385,6 @@ axs[1].set_title('Baisman Run')
 # axs[1].set_aspect(1)
 
 fig.colorbar(sc, label='Event Precipitation (mm)')
-# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR_Q0.png')
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR_Q0.png', transparent=True)
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR_Q0.pdf', transparent=True)
 # %%

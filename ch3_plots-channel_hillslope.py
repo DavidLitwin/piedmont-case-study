@@ -59,17 +59,17 @@ df_U['U'] = df_U[' 10be_rate'] * 1e3 * 1e-6 * (1/2700)
 
 #%% Channels and Hillslopes  on hillshade (projected coordinate method)
 
-# path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
-# name = 'baltimore2015_DR1_hs.bil' # hillshade
-# name_ch = "baltimore2015_DR1_D_CN.csv"  # channels
-# name_hds = "baltimore2015_DR1_Dsources.csv" # channel heads
-# name_rge = "baltimore2015_DR1_RidgeData.csv" # ridges
+path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
+name = 'baltimore2015_DR1_hs.bil' # hillshade
+name_ch = "baltimore2015_DR1_D_CN.csv"  # channels
+name_hds = "baltimore2015_DR1_Dsources.csv" # channel heads
+name_rge = "baltimore2015_DR1_RidgeData.csv" # ridges
 
-path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
-name = 'baltimore2015_BR_hs.bil'
-name_ch = "baltimore2015_BR_D_CN.csv"
-name_hds = "baltimore2015_BR_Dsources.csv"
-name_rge = "baltimore2015_BR_RidgeData.csv"
+# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+# name = 'baltimore2015_BR_hs.bil'
+# name_ch = "baltimore2015_BR_D_CN.csv"
+# name_hds = "baltimore2015_BR_Dsources.csv"
+# name_rge = "baltimore2015_BR_RidgeData.csv"
 
 src = rd.open(path + name) # hillshade
 df = pd.read_csv(path + name_ch) # channels
@@ -105,7 +105,7 @@ ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False)
 cs = ax.imshow(src.read(1), cmap='binary', vmin=100, #cmap='plasma', vmin=-0.1, vmax=0.1, #
                extent=Extent, transform=ccrs.UTM(utm), origin="upper")
 # plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DruidRun_channels.png')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/OregonRidge_channels.png')
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/OregonRidge_channels.png')
 plt.show()
 
 #%% Calculate kernel density of hillslope length and relief
