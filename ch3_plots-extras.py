@@ -1,5 +1,5 @@
 
-
+import glob
 import numpy as np
 import pandas as pd
 import pickle
@@ -11,13 +11,12 @@ import statsmodels.api as sm
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import LightSource
+from matplotlib import colors
 
 import cartopy as cp
 import cartopy.crs as ccrs
 
-from landlab import imshow_grid, RasterModelGrid
-from landlab.components import LakeMapperBarnes, FlowAccumulator, HeightAboveDrainageCalculator, DrainageDensity
-from landlab.utils import get_watershed_mask
+from landlab import imshow_grid
 
 from generate_colormap import get_continuous_cmap
 
@@ -612,3 +611,109 @@ ax.set_ylabel('Slope (m/m)')
 ax.set_xlabel('Area (m)')
 fig.legend(frameon=False)
 fig.tight_layout()
+
+
+
+#%% Saturation on hillshade
+
+path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
+name = 'LSDTT/baltimore2015_DR1_hs.bil' # Druids Run hillshade
+
+# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
+# name = 'LSDTT/baltimore2015_BR_hs.bil' # Baisman Run hillshade
+
+paths = glob.glob(path + "saturation/transects_*.csv")
+
+for i in range(len(paths)):
+    src = rd.open(path + name) # hillshade
+    # df = pd.read_csv(path + name_pts) # sampled pts
+    df = pd.read_csv(paths[i]) # sampled pts
+    A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
+    df = df[A]
+
+    bounds = src.bounds
+    Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+    proj = src.crs
+    utm = 18
+
+    fig = plt.figure(figsize=(5,6)) #(6,5)
+    ax = fig.add_subplot(1, 1, 1) #, projection=ccrs.UTM(utm)
+
+    cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
+
+    grouped = df.groupby('Name')
+    for key, group in grouped:
+        group.plot(ax=ax, 
+                    kind='scatter', 
+                    x='X', 
+                    y='Y', 
+                    label=key, 
+                    color=cols[key], 
+                    )
+    cs = ax.imshow(src.read(1), 
+                    cmap='binary', 
+                    extent=Extent, 
+                    vmin=100,
+                    origin="upper")
+    ax.set_xlim((341200, 341500)) # DR bounds
+    ax.set_ylim((4.36490e6,4.36511e6)) # DR Bounds
+    # ax.set_xlim((354550, 355100)) # PB bounds
+    # ax.set_ylim((4.37135e6,4.37225e6)) # PB Bounds
+
+    ax.set_title(df.BeginTime[1][0:10])
+    plt.tight_layout()
+    # plt.savefig(f'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DruidRun_sat_{df.BeginTime[1][0:10]}.png')
+    # plt.savefig(f'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BaismanRun_sat_{df.BeginTime[1][0:10]}.png')
+
+    plt.show()
+
+
+#%% TI vs saturation
+
+path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
+TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
+curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
+
+# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
+# TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
+# curvfile = "LSDTT/10m_window/baltimore2015_BR_CURV.bil" # Baisman Run
+
+paths = glob.glob(path + "saturation/transects_*.csv")
+
+for i in range(len(paths)):
+
+    
+    df = pd.read_csv(paths[i]) # sampled pts
+
+    # get the saturation value right
+    A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
+    df = df[A]
+    sat_val_dict = {'N':0, 'Ys':1, 'Yp':2, 'Yf':3}
+    df['sat_val'] = df['Name'].apply(lambda x: sat_val_dict[x])
+
+    coords = [(x,y) for x, y in zip(df['X'], df['Y'])]
+
+    # open TI filtered and extract at coordinates
+    tis = rd.open(path+TIfile)
+    df['TI_filtered'] = [x for x in tis.sample(coords)]
+    tis.close()
+
+    # open curv extract at coordinates 
+    cur = rd.open(path+curvfile)
+    df['curv'] = [x for x in cur.sample(coords)]
+    cur.close()
+
+    fig, ax = plt.subplots()
+    sc = ax.scatter(df['TI_filtered'], 
+                    df['sat_val'] + 0.05*np.random.randn(len(df)), 
+                    c=df['curv'], 
+                    cmap='coolwarm', 
+                    norm=colors.CenteredNorm())
+    ax.set_yticks([0,1,2,3])
+    ax.set_yticklabels(['N', 'Ys', 'Yp', 'Yf'])
+    ax.set_xlabel('TI')
+    ax.set_title(df.BeginTime[1][0:10])
+    fig.colorbar(sc, label='curvature')
+    # plt.savefig(f'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DruidRun_sat_TI_{df.BeginTime[1][0:10]}.png')
+    # plt.savefig(f'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BaismanRun_sat_TI_{df.BeginTime[1][0:10]}.png')
+    plt.show()

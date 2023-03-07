@@ -1,3 +1,4 @@
+#%%
 import numpy as np
 import pandas as pd
 import glob
@@ -8,20 +9,42 @@ import matplotlib.pyplot as plt
 
 save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
 
+
 # %% paths
 
+site = 'DR'
+res = '5m'
+resol = '5_meter'
 
-## Soldiers Delight:
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
-slopefile = "LSDTT/baltimore2015_DR1_SLOPE.bil"
-areafile = "LSDTT/baltimore2015_DR1_d8_area.bil"
+if site=='DR':
+    ## Soldiers Delight:
+    path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/%s/'%resol
+    
+    basin_file = "baltimore2015_DR1_%s_AllBasins.bil"%res
+    slopefile = "baltimore2015_DR1_%s_SLOPE.bil"%res
+    areafile = "baltimore2015_DR1_%s_d8_area.bil"%res
+    areafile_inf = "baltimore2015_DR1_%s_dinf_area.bil"%res
 
-## Oregon Ridge
-# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
-# slopefile = "LSDTT/baltimore2015_BR_SLOPE.bil"
-# areafile = "LSDTT/baltimore2015_BR_d8_area.bil"
+    TIfile = "baltimore2015_DR1_%s_TI.tif"%res # Druids Run
+    TIfile_filtered = "baltimore2015_DR1_%s_TIfiltered.tif"%res # Druids Run
 
+else:
+    # Oregon Ridge
+    path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/%s/'%resol
+
+    basin_file = "baltimore2015_BR_%s_AllBasins.bil"%res
+    slopefile = "baltimore2015_BR_%s_SLOPE.bil"%res
+    areafile = "baltimore2015_BR_%s_d8_area.bil"%res
+    areafile_inf = "baltimore2015_BR_%s_dinf_area.bil"%res
+
+    TIfile = "baltimore2015_BR_%s_TI.tif"%res # Baisman Run
+    TIfile_filtered = "baltimore2015_BR_%s_TIfiltered.tif"%res # Baisman Run
 #%% import for topographic index
+
+
+bf = rd.open(path+basin_file)
+basin = bf.read(1).astype(float)
+
 
 # fitted (10 m) slope
 sf = rd.open(path+slopefile)
@@ -39,10 +62,16 @@ area = af.read(1).astype(float)
 area = np.ma.masked_array(area, mask=area==-9999)
 af.close()
 
+# dinf area
+af = rd.open(path+areafile_inf)
+area_inf = af.read(1).astype(float)
+area_inf = np.ma.masked_array(area_inf, mask=area==-9999)
+af.close()
+
 #%%
 # calculate and filter topographic index 
 
-TI = np.log(area/(slope * dx))
+TI = np.log(area_inf/(slope * dx))
 
 plt.figure()
 plt.imshow(TI,
@@ -52,19 +81,34 @@ plt.imshow(TI,
             )
 plt.show()
 
-TI_filtered = gaussian_filter(TI, sigma=4)
-
 plt.figure()
-plt.imshow(TI_filtered,
+plt.imshow(basin,
             origin="upper", 
             extent=Extent,
             cmap='viridis',
             )
 plt.show()
 
-# write TI filtered to .tif
-TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
-# TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
+
+# TI_filtered = gaussian_filter(TI, sigma=2)
+
+# plt.figure()
+# plt.imshow(TI_filtered,
+#             origin="upper", 
+#             extent=Extent,
+#             cmap='viridis',
+#             )
+# plt.show()
+
+#%%
+
+# TIfile = "LSDTT/baltimore2015_DR1_TI_inf.tif" # Druids Run
+# TIfile_filtered = "LSDTT/baltimore2015_DR1_TIfiltered_inf.tif" # Druids Run
+# TIfile = "LSDTT/baltimore2015_BR_TI_inf.tif" # Druids Run
+# TIfile_filtered = "LSDTT/baltimore2015_BR_TIfiltered_inf.tif" # Druids Run
+
+
+# write TI unfiltered to .tif
 sf = rd.open(path+slopefile)
 TI_dataset = rd.open(
     path+TIfile,
@@ -73,12 +117,28 @@ TI_dataset = rd.open(
     height=sf.height,
     width=sf.width,
     count=1,
-    dtype=TI_filtered.dtype,
+    dtype=TI.dtype,
     crs=sf.crs,
     transform=sf.transform,
 )
-TI_dataset.write(TI_filtered,1)
+TI_dataset.write(TI,1)
 TI_dataset.close()
+
+# # write TI filtered to .tif
+# sf = rd.open(path+slopefile)
+# TI_dataset = rd.open(
+#     path+TIfile_filtered,
+#     'w',
+#     driver='GTiff',
+#     height=sf.height,
+#     width=sf.width,
+#     count=1,
+#     dtype=TI_filtered.dtype,
+#     crs=sf.crs,
+#     transform=sf.transform,
+# )
+# TI_dataset.write(TI_filtered,1)
+# TI_dataset.close()
 
 #%% clean Pond Branch and Soldiers Delight EMLID REACH saturation files
 

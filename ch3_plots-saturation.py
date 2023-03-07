@@ -15,83 +15,74 @@ from matplotlib import colors
 
 save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
 
-#%% Saturation on hillshade
+#%%
 
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
-name = 'LSDTT/baltimore2015_DR1_hs.bil' # Druids Run hillshade
+site = 'DR'
+res = 5
 
-# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
-# name = 'LSDTT/baltimore2015_BR_hs.bil' # Baisman Run hillshade
+if site=='DR':
+    path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
+    TIfile = 'LSDTT/%d_meter/baltimore2015_DR1_%dm_TI.tif'%(res,res)
+    curvfile = "LSDTT/%d_meter/baltimore2015_DR1_%dm_CURV.bil"%(res,res) # Druids Run
+    basin_name = 'LSDTT/%d_meter/baltimore2015_DR1_%dm_AllBasins.bil'%(res,res)
+    HSfile = 'LSDTT/baltimore2015_DR1_hs.bil' # Druids Run hillshade (full resolution)
+
+elif site=='BR':
+    path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
+    TIfile = 'LSDTT/%d_meter/baltimore2015_BR_%dm_TI.tif'%(res,res)
+    curvfile = "LSDTT/%d_meter/baltimore2015_BR_%dm_CURV.bil"%(res,res) # Baisman Run
+    basin_name = 'LSDTT/%d_meter/baltimore2015_BR_%dm_AllBasins.bil'%(res,res)
+    HSfile = 'LSDTT/baltimore2015_BR_hs.bil' # Druids Run hillshade (full resolution)
+
+else:
+    print('%s is not a site'%site)
+
+#%% Saturation on hillshade combined with saturation-TI
 
 paths = glob.glob(path + "saturation/transects_*.csv")
+cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
+
+fig, axs = plt.subplots(nrows=len(paths), ncols=2, figsize=(5,6)) #(5,8)
 
 for i in range(len(paths)):
-    src = rd.open(path + name) # hillshade
-    # df = pd.read_csv(path + name_pts) # sampled pts
+    src = rd.open(path + HSfile) # hillshade
     df = pd.read_csv(paths[i]) # sampled pts
     A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
     df = df[A]
 
     bounds = src.bounds
     Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
-    proj = src.crs
-    utm = 18
-
-    fig = plt.figure(figsize=(5,6)) #(6,5)
-    ax = fig.add_subplot(1, 1, 1) #, projection=ccrs.UTM(utm)
-
-    cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
+    Extent_90 = [bounds.bottom,bounds.top,bounds.right,bounds.left]
 
     grouped = df.groupby('Name')
     for key, group in grouped:
-        group.plot(ax=ax, 
-                    kind='scatter', 
-                    x='X', 
-                    y='Y', 
-                    label=key, 
-                    color=cols[key], 
-                    )
-    cs = ax.imshow(src.read(1), 
-                    cmap='binary', 
-                    extent=Extent, 
-                    vmin=100,
-                    origin="upper")
-    ax.set_xlim((341200, 341500)) # DR bounds
-    ax.set_ylim((4.36490e6,4.36511e6)) # DR Bounds
-    # ax.set_xlim((354550, 355100)) # PB bounds
-    # ax.set_ylim((4.37135e6,4.37225e6)) # PB Bounds
+        if site=='DR':
+            group.plot(ax=axs[i,0], kind='scatter', x='X', y='Y', 
+                        label=key, color=cols[key], legend=False, s=10
+                        )
+            cs = axs[i,0].imshow(src.read(1), cmap='binary', 
+                            extent=Extent, vmin=100, origin="upper")
+            axs[i,0].set_xlim((341200, 341500)) # DR bounds
+            axs[i,0].set_ylim((4.36490e6,4.36511e6)) # DR Bounds
+        else:
+            group.plot(ax=axs[i,0], kind='scatter', x='Y', y='X', 
+                        label=key, color=cols[key], legend=False, s=10
+                        )
+            cs = axs[i,0].imshow(np.rot90(src.read(1), k=3),
+                            cmap='binary', 
+                            extent=Extent_90, 
+                            vmin=100,
+                            origin="upper")       
+            axs[i,0].set_ylim((355100,354600)) # PB bounds
+            axs[i,0].set_xlim((4.3715e6,4.3722e6)) # PB Bounds
+    axs[i,0].set_xticks([])
+    axs[i,0].set_yticks([])
+    axs[i,0].set_xlabel('')
+    axs[i,0].set_ylabel('')
+    axs[i,0].set_title(df.BeginTime[1][0:10])
 
-    ax.set_title(df.BeginTime[1][0:10])
-    plt.tight_layout()
-    plt.savefig(f'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DruidRun_sat_{df.BeginTime[1][0:10]}.png')
-    # plt.savefig(f'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BaismanRun_sat_{df.BeginTime[1][0:10]}.png')
-
-    plt.show()
-
-
-#%% TI vs saturation
-
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
-TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
-curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
-
-# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
-# TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
-# curvfile = "LSDTT/10m_window/baltimore2015_BR_CURV.bil" # Baisman Run
-
-paths = glob.glob(path + "saturation/transects_*.csv")
-
-for i in range(len(paths)):
-
-    
-    df = pd.read_csv(paths[i]) # sampled pts
-
-    # get the saturation value right
-    A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
-    df = df[A]
     sat_val_dict = {'N':0, 'Ys':1, 'Yp':2, 'Yf':3}
     df['sat_val'] = df['Name'].apply(lambda x: sat_val_dict[x])
-
     coords = [(x,y) for x, y in zip(df['X'], df['Y'])]
 
     # open TI filtered and extract at coordinates
@@ -99,38 +90,27 @@ for i in range(len(paths)):
     df['TI_filtered'] = [x for x in tis.sample(coords)]
     tis.close()
 
-    # open curv extract at coordinates 
-    cur = rd.open(path+curvfile)
-    df['curv'] = [x for x in cur.sample(coords)]
-    cur.close()
+    np.random.seed(2023)
+    df['sat_perturbed'] = df['sat_val'] + 0.05*np.random.randn(len(df))
 
-    fig, ax = plt.subplots()
-    sc = ax.scatter(df['TI_filtered'], 
-                    df['sat_val'] + 0.05*np.random.randn(len(df)), 
-                    c=df['curv'], 
-                    cmap='coolwarm', 
-                    norm=colors.CenteredNorm())
-    ax.set_yticks([0,1,2,3])
-    ax.set_yticklabels(['N', 'Ys', 'Yp', 'Yf'])
-    ax.set_xlabel('TI')
-    ax.set_title(df.BeginTime[1][0:10])
-    fig.colorbar(sc, label='curvature')
-    # plt.savefig(f'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DruidRun_sat_TI_{df.BeginTime[1][0:10]}.png')
-    # plt.savefig(f'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BaismanRun_sat_TI_{df.BeginTime[1][0:10]}.png')
-    plt.show()
+    for key, group in grouped:
+            group.plot(ax=axs[i,1], kind='scatter', x='TI_filtered', y='sat_perturbed', 
+                        label=key, color=cols[key], legend=False,
+                        )
+    axs[i,1].set_yticks([0,1,2,3])
+    axs[i,1].set_yticklabels(['N', 'Ys', 'Yp', 'Yf'])
+    axs[i,1].set_ylabel('')
 
+    if i == len(paths)-1:
+        axs[i,1].set_xlabel('TI')
+    else:
+        axs[i,1].set_xlabel('')
+
+plt.tight_layout()
+plt.savefig(save_directory+f'sat_TI_{site}.pdf', transparent=True)
+plt.show()
 
 #%% assemble all saturation dataframes
-
-# site = 'DR'
-# path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
-# TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
-# curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
-
-site = 'BR'
-path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
-TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif" # Baisman Run
-curvfile = "LSDTT/10m_window/baltimore2015_BR_CURV.bil" # Baisman Run
 
 dfs = []
 paths = glob.glob(path + "saturation/transects_*.csv")
@@ -223,7 +203,7 @@ dfqug = dfqug.loc[times]
 dfqug['datetime'] = dfqug.index
 dfqug['date'] = dfqug['datetime'].dt.date
 
-#%% Add to saturation dataframe
+#%% Add to saturation dataframe, get all TI
 
 # add filtered TI points
 tis = rd.open(path+TIfile)
@@ -241,115 +221,56 @@ dfnew = dfall.merge(dfq, on='date', how='left')
 
 dfnew['Q'] = dfnew['Q m/d'] #* 1000
 dfnew.drop(columns=['OID_', 'BeginTime', 'Unnamed: 0', 'FolderPath'], inplace=True, errors='ignore')
+dfnew['sat_bin'] = (dfnew['sat_val'] > 0) * 1
 
-#%% scatter TI-sat
+# get basin
+bsn = rd.open(path + basin_name)
+basin = bsn.read(1) > 0 
 
-fig, ax = plt.subplots()
+# get all TI
+tif = rd.open(path+TIfile)
+TI = tif.read(1).astype(float)
+TI = TI[basin]
 
-cnt = -2
+#%% logistic regression for each day separately
+
+Tmean = lambda b0, b1, Q: np.exp((-b0)/b1)*Q
+
+
 grouped = dfnew.groupby('date')
+T_estimates = []
 for key, group in grouped:
-    ax.scatter(group['TI_filtered'], 
-                group['sat_val'] + 0.1*cnt,
-                c=group['Q'],
-                vmin=min(dfnew['Q']),
-                vmax=max(dfnew['Q']),
-                cmap='plasma',
-                )
-    cnt += 1
-ax.set_yticks([0,1,2,3])
-ax.set_yticklabels(['N', 'Ys', 'Yp', 'Yf'])
-ax.set_xlabel('TI')
-plt.show()
+
+    model = smf.logit('sat_bin ~ TI_filtered', data=group).fit()
+
+    covs = model.cov_params()
+    means = model.params
+
+    samples = np.random.multivariate_normal(means, covs, size=100000)
+
+    Tcalc = Tmean(samples[:,0], samples[:,1], group['Q m/d'].iloc[0])
+    T_median = np.median(Tcalc)
+    T_lq = np.percentile(Tcalc, 25)
+    T_uq = np.percentile(Tcalc, 75)
+
+    T_estimates.append([T_median, T_lq, T_uq])
 
 
 #%% Logistic regression: sat_bin ~ logTIQ
 
 # logTIQ = TI + log(Q) because TI is already log
 dfnew['logTIQ'] = dfnew['TI_filtered'] + np.log(dfnew['Q'])
-dfnew['sat_bin'] = (dfnew['sat_val'] > 0) * 1
 
 # logit using TI and Q as predictors
 model = smf.logit('sat_bin ~ logTIQ', data=dfnew).fit()
 
 # check model performance
 print(model.summary())
-with open(save_directory+'summary_%s_logTIQ.txt'%site, 'w') as fh:
-    fh.write(model.summary().as_text())
+# with open(save_directory+'summary_%s_logTIQ.txt'%site, 'w') as fh:
+#     fh.write(model.summary().as_text())
 
 # predict in sample
 in_sample = pd.DataFrame({'prob':model.predict()})
-
-#%% Logistic regression: sat_bin ~ TI_filtered + logQ
-
-# make saturation into a binary field
-dfnew['sat_bin'] = (dfnew['sat_val'] > 0) * 1
-dfnew['logQ'] = np.log(dfnew['Q'])
-
-# logit using TI and Q as predictors
-model = smf.logit('sat_bin ~ TI_filtered + logQ', data=dfnew).fit()
-
-# check model performance
-print(model.summary())
-with open(save_directory+'summary_%s_logTI_logQ.txt'%site, 'w') as fh:
-    fh.write(model.summary().as_text())
-
-# predict in sample
-in_sample = pd.DataFrame({'prob':model.predict()})
-
-#%% get TI values
-
-if site=='DR':
-
-    basin_name = 'LSDTT/baltimore2015_DR1_AllBasins.bil'
-    bsn = rd.open(path + basin_name)
-    basin = bsn.read(1) > 0 
-
-    TIfile = "LSDTT/baltimore2015_DR1_TIfiltered.tif" # Druids Run
-    tif = rd.open(path+TIfile)
-    TI = tif.read(1).astype(float)
-    TI = TI[basin]
-
-if site == 'BR':
-
-    basin_name = 'LSDTT/baltimore2015_BR_AllBasins.bil'
-    bsn = rd.open(path + basin_name)
-    basin = bsn.read(1) > 0 
-
-    TIfile = "LSDTT/baltimore2015_BR_TIfiltered.tif"
-    tif = rd.open(path+TIfile)
-    TI = tif.read(1).astype(float)
-    TI = TI[basin]
-
-#%% Predict out of sample, and plot with TI CDF
-
-TI1 = np.linspace(1,12,100)
-Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
-# Q_all = np.linspace(0.02,0.5,5)
-fig, ax = plt.subplots()
-
-for i, Q in enumerate(Q_all):
-    # pred = model.predict(exog=dict(TI_filtered=TI1, Qinv=1/Q*np.ones_like(TI1)))
-    pred = model.predict(exog=dict(TI_filtered=TI1, logQ=np.log(Q)*np.ones_like(TI1)))
-    # pred = model.predict(exog=dict(logTIQ=TI1 + np.log(Q)))
-
-    ax.plot(TI1, pred, color=cm.viridis(Q/max(Q_all)), label='Q=%.2f mm/d'%(Q*1000))
-ax.axvspan(dfnew['TI_filtered'].min(), dfnew['TI_filtered'].max(), alpha=0.2, color='r')
-ax.set_ylim(-0.05,1.05)
-ax.set_xlim((0.5,10))
-ax.legend(frameon=False, loc='upper left')
-ax.set_xlabel('TI')
-ax.set_ylabel(r'Modeled P$(saturated)$')
-
-ax1 = ax.twinx()
-ax1.plot(np.sort(TI), np.linspace(0,1,len(TI)), color='k', linewidth=1, label='CDF')
-ax1.set_xlim((0.5,10))
-ax1.set_ylim(-0.05,1.05)
-ax1.set_ylabel(r'P$(TI \leq TI_x)$')
-ax1.legend(frameon=False, loc='lower right')
-# plt.savefig(save_directory+'pred_sat_ti_%s_logTIQ.png'%site)
-plt.savefig(save_directory+'pred_sat_ti_%s_logTI_logQ.png'%site)
-
 
 #%% calulate a transmissivity: logTIQ method
 
@@ -372,7 +293,109 @@ dfT = pd.DataFrame({'Trans. med [m2/d]':T_median,
               'b1':means[1]},
               index=[0]
               )
-dfT.to_csv(save_directory+'transmissivity_%s_logTIQ.csv'%site)
+dfT.to_csv(save_directory+'transmissivity_%s_logTIQ_%dm.csv'%(site,res))
+
+#%% Predict out of sample, and plot with TI CDF
+
+TI1 = np.linspace(0.01,22,100)
+Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
+# Q_all = np.linspace(0.02,0.5,5)
+fig, ax = plt.subplots()
+
+for i, Q in enumerate(Q_all):
+    pred = model.predict(exog=dict(logTIQ=TI1 + np.log(Q)))
+
+    ax.plot(TI1, pred, color=cm.viridis(Q/max(Q_all)), label='Q=%.2f mm/d'%(Q*1000))
+ax.axvspan(dfnew['TI_filtered'].min(), dfnew['TI_filtered'].max(), alpha=0.2, color='r')
+ax.set_ylim(-0.05,1.05)
+ax.set_xlim((0.0,22))
+ax.legend(frameon=False, loc='upper left')
+ax.set_xlabel('TI')
+ax.set_ylabel(r'Modeled P$(saturated)$')
+
+ax1 = ax.twinx()
+ax1.plot(np.sort(TI), np.linspace(0,1,len(TI)), color='k', linewidth=1, label='CDF')
+ax1.set_xlim((0.0,22))
+ax1.set_ylim(-0.05,1.05)
+ax1.set_ylabel(r'P$(TI \leq TI_x)$')
+ax1.legend(frameon=False, loc='lower right')
+plt.savefig(save_directory+'pred_sat_ti_%s_logTIQ.png'%site)
+
+#%% Logistic regression: sat_bin ~ TI_filtered + logQ
+
+# make saturation into a binary field
+dfnew['logQ'] = np.log(dfnew['Q'])
+
+# logit using TI and Q as predictors
+model = smf.logit('sat_bin ~ TI_filtered + logQ', data=dfnew).fit()
+
+# check model performance
+print(model.summary())
+with open(save_directory+'summary_%s_logTI_logQ.txt'%site, 'w') as fh:
+    fh.write(model.summary().as_text())
+
+# predict in sample
+in_sample = pd.DataFrame({'prob':model.predict()})
+
+#%% Predict out of sample, and plot with TI CDF
+
+TI1 = np.linspace(0.01,22,100)
+Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
+fig, ax = plt.subplots()
+
+for i, Q in enumerate(Q_all):
+    pred = model.predict(exog=dict(TI_filtered=TI1, logQ=np.log(Q)*np.ones_like(TI1)))
+
+    ax.plot(TI1, pred, color=cm.viridis(Q/max(Q_all)), label='Q=%.2f mm/d'%(Q*1000))
+ax.axvspan(dfnew['TI_filtered'].min(), dfnew['TI_filtered'].max(), alpha=0.2, color='r')
+ax.set_ylim(-0.05,1.05)
+ax.set_xlim((0.0,22))
+ax.legend(frameon=False, loc='upper left')
+ax.set_xlabel('TI')
+ax.set_ylabel(r'Modeled P$(saturated)$')
+
+ax1 = ax.twinx()
+ax1.plot(np.sort(TI), np.linspace(0,1,len(TI)), color='k', linewidth=1, label='CDF')
+ax1.set_xlim((0.0,22))
+ax1.set_ylim(-0.05,1.05)
+ax1.set_ylabel(r'P$(TI \leq TI_x)$')
+ax1.legend(frameon=False, loc='lower right')
+plt.savefig(save_directory+'pred_sat_ti_%s_logTI_logQ.png'%site)
+
+#%% plot saturation on hillshade
+
+# hillshade
+if site == 'DR':
+    name = 'LSDTT/baltimore2015_DR1_hs.bil' # Druids Run hillshade
+else:
+    name = 'LSDTT/baltimore2015_BR_hs.bil' # Baisman Run hillshade
+src = rd.open(path + name) # hillshade
+bounds = src.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+
+# TI
+TI_plot = tif.read(1).astype(float)
+shp = TI_plot.shape
+TI_plot = TI_plot.flatten()
+sat_state = np.zeros_like(TI_plot)
+
+for i, Q in enumerate(Q_all):
+    pred = model.predict(exog=dict(TI_filtered=TI_plot, logQ=np.log(Q)*np.ones_like(TI_plot)))
+    sat_state += 1*(pred>0.5)
+
+#%%
+
+fig, ax = plt.subplots()
+ax.imshow(src.read(1), cmap='binary', 
+                extent=Extent, vmin=100, origin="upper")
+
+cs = ax.imshow(sat_state.values.reshape(shp), cmap='Blues', 
+                extent=Extent, 
+                origin="upper",
+                alpha=0.5,
+                )
+# ax.set_xlim((341200, 341500)) # DR bounds
+# ax.set_ylim((4.36490e6,4.36511e6)) # DR Bounds
 
 
 #%% calulate a transmissivity: logTI + logQ method
@@ -530,3 +553,22 @@ plt.figure()
 plt.scatter(Q_all/1000, TIcrit(Q_all)-np.log(1/(Q_all/1000)))
 
 # %%
+#%% scatter TI-sat
+
+fig, ax = plt.subplots()
+
+cnt = -2
+grouped = dfnew.groupby('date')
+for key, group in grouped:
+    ax.scatter(group['TI_filtered'], 
+                group['sat_val'] + 0.1*cnt,
+                c=group['Q'],
+                vmin=min(dfnew['Q']),
+                vmax=max(dfnew['Q']),
+                cmap='plasma',
+                )
+    cnt += 1
+ax.set_yticks([0,1,2,3])
+ax.set_yticklabels(['N', 'Ys', 'Yp', 'Yf'])
+ax.set_xlabel('TI')
+plt.show()
