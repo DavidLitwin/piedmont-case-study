@@ -7,6 +7,7 @@ import pickle
 import glob
 import rasterio as rd
 import statsmodels.formula.api as smf
+from sklearn.neighbors import KernelDensity
 import dataretrieval.nwis as nwis
 
 import matplotlib.pyplot as plt
@@ -20,22 +21,38 @@ save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_deli
 site = 'DR'
 res = 5
 
-if site=='DR':
+if site=='DR' and res>=1:
     path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
     TIfile = 'LSDTT/%d_meter/baltimore2015_DR1_%dm_TI.tif'%(res,res)
     curvfile = "LSDTT/%d_meter/baltimore2015_DR1_%dm_CURV.bil"%(res,res) # Druids Run
     basin_name = 'LSDTT/%d_meter/baltimore2015_DR1_%dm_AllBasins.bil'%(res,res)
+    HSfile_res = 'LSDTT/%d_meter/baltimore2015_DR1_%dm_hs.bil'%(res,res)
     HSfile = 'LSDTT/baltimore2015_DR1_hs.bil' # Druids Run hillshade (full resolution)
 
-elif site=='BR':
+elif site=='BR' and res>=1:
     path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
     TIfile = 'LSDTT/%d_meter/baltimore2015_BR_%dm_TI.tif'%(res,res)
     curvfile = "LSDTT/%d_meter/baltimore2015_BR_%dm_CURV.bil"%(res,res) # Baisman Run
     basin_name = 'LSDTT/%d_meter/baltimore2015_BR_%dm_AllBasins.bil'%(res,res)
+    HSfile_res = 'LSDTT/%d_meter/baltimore2015_BR_%dm_hs.bil'%(res,res)
     HSfile = 'LSDTT/baltimore2015_BR_hs.bil' # Druids Run hillshade (full resolution)
 
+elif site=='DR' and res<1:
+    path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
+    TIfile = 'LSDTT/baltimore2015_DR1_TIfiltered.tif'
+    curvfile = "LSDTT/baltimore2015_DR1_CURV.bil" # Druids Run
+    basin_name = 'LSDTT/baltimore2015_DR1_AllBasins.bil'
+    HSfile = 'LSDTT/baltimore2015_DR1_hs.bil' # Druids Run hillshade (full resolution)    
+
+elif site=='BR' and res<1:
+    path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
+    TIfile = 'LSDTT/baltimore2015_BR_TIfiltered.tif'
+    curvfile = "LSDTT/baltimore2015_BR_CURV.bil" # Druids Run
+    basin_name = 'LSDTT/baltimore2015_BR_AllBasins.bil'
+    HSfile = 'LSDTT/baltimore2015_BR_hs.bil' # Druids Run hillshade (full resolution)    
+
 else:
-    print('%s is not a site'%site)
+    print('%s at res %d is not there'%(site,res))
 
 #%% Saturation on hillshade combined with saturation-TI
 
@@ -107,7 +124,8 @@ for i in range(len(paths)):
         axs[i,1].set_xlabel('')
 
 plt.tight_layout()
-plt.savefig(save_directory+f'sat_TI_{site}.pdf', transparent=True)
+# plt.savefig(save_directory+f'sat_TI_{site}_{res}m.pdf', transparent=True)
+# plt.savefig(save_directory+f'sat_TI_{site}_{res}m.png', transparent=True)
 plt.show()
 
 #%% assemble all saturation dataframes
@@ -227,6 +245,14 @@ dfnew['sat_bin'] = (dfnew['sat_val'] > 0) * 1
 bsn = rd.open(path + basin_name)
 basin = bsn.read(1) > 0 
 
+plt.figure()
+plt.imshow(basin,
+            origin="upper", 
+            extent=Extent,
+            cmap='viridis',
+            )
+plt.show()
+
 # get all TI
 tif = rd.open(path+TIfile)
 TI = tif.read(1).astype(float)
@@ -266,15 +292,17 @@ model = smf.logit('sat_bin ~ logTIQ', data=dfnew).fit()
 
 # check model performance
 print(model.summary())
-# with open(save_directory+'summary_%s_logTIQ.txt'%site, 'w') as fh:
-#     fh.write(model.summary().as_text())
+with open(save_directory+f'summary_{site}_logTIQ_{res}.txt', 'w') as fh:
+    fh.write(model.summary().as_text())
 
 # predict in sample
 in_sample = pd.DataFrame({'prob':model.predict()})
 
 #%% calulate a transmissivity: logTIQ method
 
-Tmean = lambda b0, b1: np.exp((-b0)/b1)
+p = 0.35
+rhostar = np.log(p/(1-p))
+Tmean = lambda b0, b1: np.exp((rhostar-b0)/b1)
 
 covs = model.cov_params()
 means = model.params
@@ -293,7 +321,7 @@ dfT = pd.DataFrame({'Trans. med [m2/d]':T_median,
               'b1':means[1]},
               index=[0]
               )
-dfT.to_csv(save_directory+'transmissivity_%s_logTIQ_%dm.csv'%(site,res))
+# dfT.to_csv(save_directory+f'transmissivity_{site}_logTIQ_{res}.csv')
 
 #%% Predict out of sample, and plot with TI CDF
 
@@ -319,7 +347,36 @@ ax1.set_xlim((0.0,22))
 ax1.set_ylim(-0.05,1.05)
 ax1.set_ylabel(r'P$(TI \leq TI_x)$')
 ax1.legend(frameon=False, loc='lower right')
-plt.savefig(save_directory+'pred_sat_ti_%s_logTIQ.png'%site)
+plt.savefig(save_directory+f'pred_sat_ti_{site}_logTIQ_{res}.png')
+
+#%% Predict out of sample, and plot with TI PDF
+
+TI1 = np.linspace(0.01,22,500)
+Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
+# Q_all = np.linspace(0.02,0.5,5)
+fig, ax = plt.subplots()
+
+for i, Q in enumerate(Q_all):
+    pred = model.predict(exog=dict(logTIQ=TI1 + np.log(Q)))
+
+    ax.plot(TI1, pred, color=cm.viridis(Q/max(Q_all)), label='Q=%.2f mm/d'%(Q*1000))
+ax.axvspan(dfnew['TI_filtered'].min(), dfnew['TI_filtered'].max(), alpha=0.2, color='r')
+ax.set_ylim(-0.01,1.05)
+ax.set_xlim((0.0,22))
+ax.legend(frameon=False, loc='upper left')
+ax.set_xlabel('TI')
+ax.set_ylabel(r'Modeled P$(saturated)$')
+
+ax1 = ax.twinx()
+kde = KernelDensity(bandwidth=0.2, kernel='gaussian')
+kde.fit(TI.reshape(-1,1))
+logprob = kde.score_samples(TI1.reshape(-1,1))
+ax1.fill_between(TI1, np.exp(logprob), alpha=0.5)
+ax1.set_xlim((0.0,22))
+ax1.set_ylim(-0.01,0.5)
+ax1.set_ylabel('Density')
+ax1.legend(frameon=False, loc='lower right')
+# plt.savefig(save_directory+f'pred_sat_ti_{site}_logTIQ_{res}.png')
 
 #%% Logistic regression: sat_bin ~ TI_filtered + logQ
 
@@ -331,7 +388,7 @@ model = smf.logit('sat_bin ~ TI_filtered + logQ', data=dfnew).fit()
 
 # check model performance
 print(model.summary())
-with open(save_directory+'summary_%s_logTI_logQ.txt'%site, 'w') as fh:
+with open(save_directory+f'summary_{site}_logTI_logQ_{res}.txt', 'w') as fh:
     fh.write(model.summary().as_text())
 
 # predict in sample
@@ -349,27 +406,57 @@ for i, Q in enumerate(Q_all):
     ax.plot(TI1, pred, color=cm.viridis(Q/max(Q_all)), label='Q=%.2f mm/d'%(Q*1000))
 ax.axvspan(dfnew['TI_filtered'].min(), dfnew['TI_filtered'].max(), alpha=0.2, color='r')
 ax.set_ylim(-0.05,1.05)
-ax.set_xlim((0.0,22))
+ax.set_xlim((0.0,12))
 ax.legend(frameon=False, loc='upper left')
 ax.set_xlabel('TI')
 ax.set_ylabel(r'Modeled P$(saturated)$')
 
 ax1 = ax.twinx()
 ax1.plot(np.sort(TI), np.linspace(0,1,len(TI)), color='k', linewidth=1, label='CDF')
-ax1.set_xlim((0.0,22))
+ax1.set_xlim((0.0,12))
 ax1.set_ylim(-0.05,1.05)
 ax1.set_ylabel(r'P$(TI \leq TI_x)$')
 ax1.legend(frameon=False, loc='lower right')
-plt.savefig(save_directory+'pred_sat_ti_%s_logTI_logQ.png'%site)
+plt.savefig(save_directory+f'pred_sat_ti_cdf_{site}_logTI_logQ_{res}.pdf', transparent=True)
+
+#%% Predict out of sample, and plot with TI PDF
+
+TI1 = np.linspace(0.01,22,100)
+Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
+fig, ax = plt.subplots()
+
+ax.axhline(y=0.5, linewidth=1, color='k', linestyle='--')
+for i, Q in enumerate(Q_all):
+    pred = model.predict(exog=dict(TI_filtered=TI1, logQ=np.log(Q)*np.ones_like(TI1)))
+    ax.plot(TI1, pred, color=cm.viridis(Q/max(Q_all)), label='Q=%.2f mm/d'%(Q*1000))
+    
+    TIc = (-model.params[0]-model.params[2]*np.log(Q))/model.params[1]
+    ax.plot([TIc,TIc], [0.0,0.5], color=cm.viridis(Q/max(Q_all)), linestyle=':', linewidth=1)
+ax.set_yticks([0.0,0.25,0.5,0.75,1.0])
+ax.set_ylim(-0.01,1.01)
+ax.set_xlim((0.0,22))
+ax.legend(frameon=False, loc='upper left')
+ax.set_xlabel('TI')
+ax.set_ylabel(r'Modeled P$(saturated)$')
+
+ax1 = ax.twinx()
+kde = KernelDensity(bandwidth=0.2, kernel='gaussian')
+kde.fit(TI.reshape(-1,1))
+logprob = kde.score_samples(TI1.reshape(-1,1))
+ax1.axvspan(dfnew['TI_filtered'].min(), dfnew['TI_filtered'].max(), alpha=0.1, color='peru')
+ax1.fill_between(TI1, np.exp(logprob), alpha=0.4, color='peru')
+ax1.plot(TI1, np.exp(logprob), color='peru', linewidth=1, label='PDF')
+ax1.set_xlim((0.0,22))
+ax1.set_ylim(-0.01,0.5)
+ax1.set_ylabel('Density')
+ax1.legend(frameon=False, loc='lower right')
+plt.savefig(save_directory+f'pred_sat_ti_pdf_{site}_logTI_logQ_{res}.pdf', transparent=True)
+plt.savefig(save_directory+f'pred_sat_ti_pdf_{site}_logTI_logQ_{res}.png', transparent=True)
 
 #%% plot saturation on hillshade
 
 # hillshade
-if site == 'DR':
-    name = 'LSDTT/baltimore2015_DR1_hs.bil' # Druids Run hillshade
-else:
-    name = 'LSDTT/baltimore2015_BR_hs.bil' # Baisman Run hillshade
-src = rd.open(path + name) # hillshade
+src = rd.open(path + HSfile_res) # hillshade
 bounds = src.bounds
 Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
 
@@ -385,18 +472,35 @@ for i, Q in enumerate(Q_all):
 
 #%%
 
-fig, ax = plt.subplots()
-ax.imshow(src.read(1), cmap='binary', 
-                extent=Extent, vmin=100, origin="upper")
+# sat_state = np.ma.masked_array(sat_state, mask=~basin)
+hs = src.read(1)
+hs = np.ma.masked_array(hs, mask=hs==-9999)
 
-cs = ax.imshow(sat_state.values.reshape(shp), cmap='Blues', 
+fig, ax = plt.subplots(figsize=(10,6)) #(6,6)
+ax.imshow(hs, cmap='binary', 
+                extent=Extent, origin="upper", vmin=160)
+cmap = cm.get_cmap('Blues', 5)
+cmap.set_under('w')
+cs = ax.imshow(sat_state.values.reshape(shp), cmap=cmap, vmin=0.5,vmax=5.5, 
                 extent=Extent, 
                 origin="upper",
-                alpha=0.5,
+                alpha=0.7,
+                interpolation=None,
                 )
+cbar = fig.colorbar(cs, ticks=[1,2,3,4,5], label='Q (mm/d)', extend='min')
+label = np.round(Q_all[::-1]*1000,2)
+cbar.ax.set_yticklabels(label) 
+ofs= 100 #50
+ax.set_xlim((Extent[0]+ofs, Extent[1]-ofs))
+ax.set_ylim((Extent[2]+ofs,Extent[3]-ofs))
+plt.axis('off')
+plt.savefig(save_directory+f'satmap_{site}_{res}.pdf', transparent=True)
+plt.savefig(save_directory+f'satmap_{site}_{res}.png', transparent=True)
+
 # ax.set_xlim((341200, 341500)) # DR bounds
 # ax.set_ylim((4.36490e6,4.36511e6)) # DR Bounds
-
+# ax.set_xlim((355100,354600)) # PB bounds
+# ax.set_ylim((4.3715e6,4.3722e6)) # PB Bounds
 
 #%% calulate a transmissivity: logTI + logQ method
 
@@ -491,7 +595,7 @@ for key, group in grouped:
 
 # thresholds = np.linspace(0.2,0.8,20)
 # thresholds = np.linspace(0.05,0.6,20)
-thresholds = np.linspace(0.05,0.3,20)
+thresholds = np.linspace(0.2,0.8,20)
 sens = np.zeros_like(thresholds)
 spec = np.zeros_like(thresholds)
 for i, thresh in enumerate(thresholds):
@@ -507,7 +611,7 @@ ax.axline([0,0], [1,1])
 ax.set_xlabel('False Positive Ratio')
 ax.set_ylabel('True Positive Ratio')
 fig.colorbar(sc, label='threshold')
-plt.savefig(save_directory+'sens_spec_%s.png'%site)
+# plt.savefig(save_directory+'sens_spec_%s.png'%site)
 
 fig, ax = plt.subplots()
 sc = ax.scatter(thresholds, (1-spec)+sens, c=1-spec)

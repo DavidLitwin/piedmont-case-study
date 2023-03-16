@@ -4,15 +4,14 @@ import pandas as pd
 import glob
 import rasterio as rd
 from scipy.ndimage import gaussian_filter
-
 import matplotlib.pyplot as plt
 
 save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
 
 
-# %% paths
+# %% paths (rescaled dem)
 
-site = 'DR'
+site = 'BR'
 res = '5m'
 resol = '5_meter'
 
@@ -39,6 +38,35 @@ else:
 
     TIfile = "baltimore2015_BR_%s_TI.tif"%res # Baisman Run
     TIfile_filtered = "baltimore2015_BR_%s_TIfiltered.tif"%res # Baisman Run
+
+#%% paths (not rescaled)
+
+site = 'DR'
+
+if site=='DR':
+    ## Soldiers Delight:
+    path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
+    
+    basin_file = "baltimore2015_DR1_AllBasins.bil"
+    slopefile = "baltimore2015_DR1_SLOPE.bil"
+    areafile = "baltimore2015_DR1_d8_area.bil"
+    areafile_inf = "baltimore2015_DR1_dinf_area.bil"
+
+    TIfile = "baltimore2015_DR1_TI.tif" # Druids Run
+    TIfile_filtered = "baltimore2015_DR1_TIfiltered.tif" # Druids Run
+
+else:
+    # Oregon Ridge
+    path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+
+    basin_file = "baltimore2015_BR_AllBasins.bil"
+    slopefile = "baltimore2015_BR_SLOPE.bil"
+    areafile = "baltimore2015_BR_d8_area.bil"
+    areafile_inf = "baltimore2015_BR_dinf_area.bil"
+
+    TIfile = "baltimore2015_BR_TI.tif" # Baisman Run
+    TIfile_filtered = "baltimore2015_BR_TIfiltered.tif" # Baisman Run
+
 #%% import for topographic index
 
 
@@ -73,24 +101,35 @@ af.close()
 
 TI = np.log(area_inf/(slope * dx))
 
+TI8 = np.log(area/(slope * dx))
+
+ti = TI[TI.mask == False]
+ti8 = TI8[TI8.mask == False]
 plt.figure()
-plt.imshow(TI,
-            origin="upper", 
-            extent=Extent,
-            cmap='viridis',
-            )
+plt.plot(np.sort(ti), np.linspace(0,1,len(ti)), color='k', linewidth=1, label='Inf')
+plt.plot(np.sort(ti8), np.linspace(0,1,len(ti8)), color='b', linewidth=1, label='D8')
+plt.xlabel('TI')
+plt.ylabel('CDF')
 plt.show()
 
-plt.figure()
-plt.imshow(basin,
-            origin="upper", 
-            extent=Extent,
-            cmap='viridis',
-            )
-plt.show()
+# plt.figure()
+# plt.imshow(TI,
+#             origin="upper", 
+#             extent=Extent,
+#             cmap='viridis',
+#             )
+# plt.show()
+
+# plt.figure()
+# plt.imshow(basin,
+#             origin="upper", 
+#             extent=Extent,
+#             cmap='viridis',
+#             )
+# plt.show()
 
 
-# TI_filtered = gaussian_filter(TI, sigma=2)
+# TI_filtered = gaussian_filter(TI, sigma=4)
 
 # plt.figure()
 # plt.imshow(TI_filtered,
@@ -102,10 +141,8 @@ plt.show()
 
 #%%
 
-# TIfile = "LSDTT/baltimore2015_DR1_TI_inf.tif" # Druids Run
-# TIfile_filtered = "LSDTT/baltimore2015_DR1_TIfiltered_inf.tif" # Druids Run
-# TIfile = "LSDTT/baltimore2015_BR_TI_inf.tif" # Druids Run
-# TIfile_filtered = "LSDTT/baltimore2015_BR_TIfiltered_inf.tif" # Druids Run
+# TIfile = "baltimore2015_DR1_TI_D8.tif"
+TIfile = "baltimore2015_BR_TI_D8.tif"
 
 
 # write TI unfiltered to .tif
@@ -121,10 +158,10 @@ TI_dataset = rd.open(
     crs=sf.crs,
     transform=sf.transform,
 )
-TI_dataset.write(TI,1)
+TI_dataset.write(TI8,1)
 TI_dataset.close()
 
-# # write TI filtered to .tif
+# write TI filtered to .tif
 # sf = rd.open(path+slopefile)
 # TI_dataset = rd.open(
 #     path+TIfile_filtered,
