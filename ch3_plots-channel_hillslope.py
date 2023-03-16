@@ -149,7 +149,7 @@ dfLh = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Lh'].mean()], [BRq1, BRm
                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
 dfLh.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Lh_stats.csv', float_format="%.1f")
 axs[0].vlines(pos, [DRq1, BRq1], [DRq3, BRq3], color='k', linestyle='-', lw=5)
-axs[0].set_ylim((-10,1200))
+axs[0].set_ylim((-10,800))
 axs[0].set_xticks(pos)
 axs[0].set_xticklabels(label)
 axs[0].set_ylabel('Length (m)')

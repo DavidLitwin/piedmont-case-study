@@ -310,8 +310,8 @@ axs[1].fill_between(dfe_BR['P'], np.exp(iv_l) , np.exp(iv_u), alpha=0.15, color=
 axs[1].axline([0,0], [1,1], color='k', linestyle='--')
 axs[1].text(0.1, 
             0.9, 
-            r'$r^2 = %.2f$'%results_BR.rsquared,
-            #r'$a = %.3f \pm %.3f$'%(results_BR.params[1], results_BR.bse[1]), 
+            # r'$r^2 = %.2f$'%results_BR.rsquared,
+            r'$a = %.3f \pm %.3f$'%(results_BR.params[1], results_BR.bse[1]), 
             transform=axs[1].transAxes
             )
 axs[1].set_ylim((0.005,60))
@@ -334,8 +334,8 @@ axs[0].fill_between(dfe_DR['P'], np.exp(iv_l) , np.exp(iv_u), alpha=0.15, color=
 axs[0].axline([0,0], [1,1], color='k', linestyle='--')
 axs[0].text(0.1, 
             0.9, 
-            r'$r^2 = %.2f$'%results_DR.rsquared,
-            #r'$a = %.3f \pm %.3f$'%(results_DR.params[1], results_DR.bse[1]), 
+            # r'$r^2 = %.2f$'%results_DR.rsquared,
+            r'$a = %.3f \pm %.3f$'%(results_DR.params[1], results_DR.bse[1]), 
             transform=axs[0].transAxes
             )
 axs[0].set_ylim((0.005,60))
