@@ -18,7 +18,7 @@ save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_deli
 
 #%%
 
-site = 'DR'
+site = 'BR'
 res = 5
 
 if site=='DR' and res>=1:
@@ -126,6 +126,105 @@ for i in range(len(paths)):
 plt.tight_layout()
 # plt.savefig(save_directory+f'sat_TI_{site}_{res}m.pdf', transparent=True)
 # plt.savefig(save_directory+f'sat_TI_{site}_{res}m.png', transparent=True)
+plt.show()
+
+#%% just map view
+
+paths = glob.glob(path + "saturation/transects_*.csv")
+cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
+
+fig, axs = plt.subplots(ncols=len(paths), figsize=(10,3)) #(5,8)
+
+for i in range(len(paths)):
+    src = rd.open(path + HSfile) # hillshade
+    df = pd.read_csv(paths[i]) # sampled pts
+    A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
+    df = df[A]
+
+    bounds = src.bounds
+    Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+    Extent_90 = [bounds.bottom,bounds.top,bounds.right,bounds.left]
+
+    grouped = df.groupby('Name')
+    for key, group in grouped:
+        if site=='DR':
+            group.plot(ax=axs[i], kind='scatter', x='X', y='Y', 
+                        label=key, color=cols[key], legend=False, s=10
+                        )
+            cs = axs[i].imshow(src.read(1), cmap='binary', 
+                            extent=Extent, vmin=100, origin="upper")
+            axs[i].set_xlim((341200, 341500)) # DR bounds
+            axs[i].set_ylim((4.36490e6,4.36511e6)) # DR Bounds
+        else:
+            group.plot(ax=axs[i], kind='scatter', x='Y', y='X', 
+                        label=key, color=cols[key], legend=False, s=10
+                        )
+            cs = axs[i].imshow(np.rot90(src.read(1), k=3),
+                            cmap='binary', 
+                            extent=Extent_90, 
+                            vmin=100,
+                            origin="upper")       
+            axs[i].set_ylim((355100,354600)) # PB bounds
+            axs[i].set_xlim((4.3715e6,4.3722e6)) # PB Bounds
+    axs[i].set_xticks([])
+    axs[i].set_yticks([])
+    axs[i].set_xlabel('')
+    axs[i].set_ylabel('')
+    axs[i].set_title(df.BeginTime[1][0:10])
+
+plt.tight_layout()
+plt.savefig(save_directory+f'sat_{site}_{res}m.pdf', transparent=True)
+plt.savefig(save_directory+f'sat_{site}_{res}m.png', transparent=True)
+plt.show()
+
+
+#%% individual saturation survey
+
+sat_path = path + "saturation/transects_20230126.csv"
+
+cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
+
+fig, ax = plt.subplots(figsize=(4,4))
+
+src = rd.open(path + HSfile) # hillshade
+df = pd.read_csv(paths[i]) # sampled pts
+A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
+df = df[A]
+
+bounds = src.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+Extent_90 = [bounds.bottom,bounds.top,bounds.right,bounds.left]
+
+grouped = df.groupby('Name')
+for key, group in grouped:
+    if site=='DR':
+        group.plot(ax=ax, kind='scatter', x='X', y='Y', 
+                    label=key, color=cols[key], legend=False, s=20
+                    )
+        cs = ax.imshow(src.read(1), cmap='binary', 
+                        extent=Extent, vmin=100, origin="upper")
+        ax.set_xlim((341200, 341500)) # DR bounds
+        ax.set_ylim((4.36490e6,4.36511e6)) # DR Bounds
+    else:
+        group.plot(ax=ax, kind='scatter', x='Y', y='X', 
+                    label=key, color=cols[key], legend=False, s=20
+                    )
+        cs = ax.imshow(np.rot90(src.read(1), k=3),
+                        cmap='binary', 
+                        extent=Extent_90, 
+                        vmin=100,
+                        origin="upper")       
+        ax.set_ylim((355100,354600)) # PB bounds
+        ax.set_xlim((4.3715e6,4.3722e6)) # PB Bounds
+ax.set_xticks([])
+ax.set_yticks([])
+ax.set_xlabel('')
+ax.set_ylabel('')
+# ax.set_title(df.BeginTime[1][0:10])
+
+plt.tight_layout()
+# plt.savefig(save_directory+f'sat_{site}_{res}m.pdf', transparent=True)
+# plt.savefig(save_directory+f'sat_{site}_{res}m.png', transparent=True)
 plt.show()
 
 #%% assemble all saturation dataframes
@@ -322,6 +421,64 @@ dfT = pd.DataFrame({'Trans. med [m2/d]':T_median,
               index=[0]
               )
 # dfT.to_csv(save_directory+f'transmissivity_{site}_logTIQ_{res}.csv')
+
+
+#%% calculate transmissivity: range of thresholds
+
+N = 50
+# p_all = np.linspace(0.2,0.7,N)
+p_all = np.linspace(0.05,0.7,N)
+rhostar = lambda p: np.log(p/(1-p))
+Tmean = lambda b0, b1, p: np.exp((rhostar(p)-b0)/b1)
+
+T_all = np.zeros((N,3))
+sens = np.zeros(N)
+spec = np.zeros(N)
+dist = np.zeros(N)
+
+covs = model.cov_params()
+means = model.params
+
+samples = np.random.multivariate_normal(means, covs, size=100000)
+
+for i, p in enumerate(p_all):
+
+    Tcalc = Tmean(samples[:,0], samples[:,1], p)
+    T_all[i,0] = np.median(Tcalc)
+    T_all[i,1] = np.percentile(Tcalc, 25)
+    T_all[i,2] = np.percentile(Tcalc, 75)
+
+    in_sample['pred_label'] = (in_sample['prob']>p).astype(int)
+    cs = pd.crosstab(in_sample['pred_label'],dfnew['sat_bin'])
+    sens[i] = cs[1][1]/(cs[1][1] + cs[1][0])
+    spec[i] = cs[0][0]/(cs[0][0] + cs[0][1])
+
+    dist[i] = abs(sens[i]-(1-spec[i]))/np.sqrt(2)
+
+
+fig, ax = plt.subplots()
+sc = ax.scatter(1-spec, sens, c=p_all)
+ax.axline([0,0], [1,1])
+ax.set_xlabel('False Positive Ratio')
+ax.set_ylabel('True Positive Ratio')
+fig.colorbar(sc, label='threshold')
+plt.savefig(save_directory+'FPR_TPR_thresh_%s.png'%site)
+
+fig, ax = plt.subplots()
+sc = ax.scatter(1-spec, sens, c=T_all[:,0], cmap='plasma', norm=colors.LogNorm())
+ax.axline([0,0], [1,1])
+ax.set_xlabel('False Positive Ratio')
+ax.set_ylabel('True Positive Ratio')
+fig.colorbar(sc, label='Transmissivity')
+plt.savefig(save_directory+'FPR_TPR_trans_%s.png'%site)
+
+fig, ax = plt.subplots()
+sc = ax.scatter(T_all[:,0], dist, c=p_all)
+ax.set_xscale('log')
+ax.set_xlabel('Transmissivity')
+ax.set_ylabel('Distance from FPR-TPR 1:1')
+fig.colorbar(sc, label='Threshold')
+plt.savefig(save_directory+'trans_dist_thresh_%s.png'%site)
 
 #%% Predict out of sample, and plot with TI CDF
 

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import pickle
+from scipy.stats import norm, truncnorm, ranksums
 from calc_storm_stats import get_event_interevent_arrays
 
 
@@ -35,7 +36,19 @@ name = 'denudation_piedmont_portenga_2019_fig_4.csv'
 df_U = pd.read_csv(path+name) # (Mg km-2 yr-1)
 df_U['U'] = df_U[' 10be_rate'] * 1e3 * 1e-6 * (1/2700) * 1/(365*24*3600) # kg/Mg * km2/m2 * m2/kg * yr/sec
 
+
+# method for calculating std from q1 and q3 https://stats.stackexchange.com/a/256496
+n = 10 # number of samples of piedmont in Portenga et al.
+U_std = (df_U['U'][4] - df_U['U'][1]) / (2 * norm.ppf((0.75 * n - 0.125) / (n + 0.25)))
+U_mean = df_U['U'][2]
+
 df_params['U'] = df_U['U'][2]
+
+# generate truncated normally distributed random samples for erosion/uplift rate https://stackoverflow.com/a/64621360
+#U_gen = U_std * np.random.randn(10000) + U_mean
+a = (0 - U_mean) / U_std
+U_gen = truncnorm.rvs(a, np.inf, loc=U_mean, scale=U_std, size=10000, random_state=1234)
+
 
 # %% D: Diffusivity
 
@@ -52,13 +65,78 @@ rho_BR = calc_weighted_avg(df_BR_bulk, 'Rating (grams per\ncubic centimeter)')
 # calculate bulk density
 df_params['rho_ratio'] = [rho_serp/rho_DR, rho_schist/rho_BR]
 
-# use the median of the hilltop curvature - not that different from log-mean
-df_HT_stats = pd.read_csv(path+"df_HT_stats.csv", index_col=0)
-df_params['D'] = (df_params['rho_ratio']*df_params['U'])/(-df_HT_stats['Med'])
+# load hilltop data
+path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
+path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+name_ht_DR = "baltimore2015_DR1_HilltopData_TN.csv"
+name_ht_BR = "baltimore2015_BR_HilltopData_TN.csv"
 
-# the calculated values are indistinguishable given uncertainty, so let's just
+# pick the right basin and remove some very negative outliers
+df_ht_DR = pd.read_csv(path1 + name_ht_DR)
+df_ht_DR = df_ht_DR[df_ht_DR['BasinID']==99]
+df_ht_BR = pd.read_csv(path2 + name_ht_BR)
+df_ht_BR = df_ht_BR[df_ht_BR['BasinID']==71]
+cBR = df_ht_BR['Cht'] > -1
+cDR = df_ht_DR['Cht'] > -1
+
+# generate random samples for curvature by selecting with replacement
+Cht_DR_gen = np.random.choice(df_ht_DR['Cht'][cDR], 10000, replace=True)
+Cht_BR_gen = np.random.choice(df_ht_BR['Cht'][cBR], 10000, replace=True)
+
+# assume rho ratio is just one value
+rho_ratio = 2
+
+# calculate diffusivity for each combination
+D_DR = (df_params['rho_ratio']['DR'] * U_gen)/(-Cht_DR_gen)
+D_BR = (df_params['rho_ratio']['BR'] * U_gen)/(-Cht_BR_gen)
+
+# get quantiles
+q25_DR, med_DR, q75_DR = np.percentile(D_DR, [25, 50, 75])
+q25_BR, med_BR, q75_BR = np.percentile(D_BR, [25, 50, 75])
+
+df_D = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]], 
+                    columns=['q25','q50','q75'], index=['DR','BR'])
+
+# the calculated values look indistinguishable given uncertainty, so let's just
 # say that they are the same
-df_params['D'] = df_params['D'].mean()
+df_params['D'] =  df_D['q50'] #df_D['q50'].mean()
+
+#%%
+
+D_Stat = ranksums(D_DR, D_BR)
+
+
+#%% violin plot D
+
+pos   = [1, 2]
+label = ['Druids Run', 'Baisman Run']
+clrs = ['firebrick', 'royalblue']
+
+D = [np.log10(D_DR*(3600*24*365)), np.log10(D_BR*(3600*24*365))]
+
+fig, ax = plt.subplots(figsize=(4,5))
+parts = ax.violinplot(D, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+ax.vlines(pos, np.log10(np.array([q25_DR, q25_BR])*(3600*24*365)), 
+          np.log10(np.array([q75_DR, q75_BR])*(3600*24*365)), color='k', linestyle='-', lw=5)
+# ax.set_ylim((-10,-2))
+ax.set_xticks(pos)
+ax.set_xticklabels(label)
+ax.set_ylabel(r'$\log_{10}(D \,\, (m^2/yr))$')
+ax.set_title('Hillslope Diffusivity')
+
+plt.show()
+fig.tight_layout()
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/D_violinplot.png')
+
+
 # %% K, m, n: streampower coefficients
 
 path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
@@ -75,18 +153,17 @@ df_chi_BR = pd.read_csv(path2 + name_chi_BR)
 
 # estimate the runoff ratio Qstar_max = (Q/P) for the sites, which is needed to isolate K from Q* in our streampower law
 # start by assuming that they are the same, then iterate based on the model results.
-df_params['Qstar_max'] = [0.6,0.3]
+df_params['Qstar_max'] = [0.3,0.3] #0.6,0.3
 
 # choose steepness index of the segments with larger drainage areas, because 
 # this avoids headwaters where there should be more dependence on Q*
-Quant_BR = np.quantile(df_chi_BR['drainage_area'], 0.8)
 Quant_DR = np.quantile(df_chi_DR['drainage_area'], 0.8)
+Quant_BR = np.quantile(df_chi_BR['drainage_area'], 0.8)
 
-# use median to decrease the effect of some anomalous reaches associated with
-# lithological difference or possibly transience
-ksn_BR = df_chi_BR['m_chi'].loc[df_chi_BR['drainage_area']<Quant_BR].median()
-ksn_DR = df_chi_DR['m_chi'].loc[df_chi_DR['drainage_area']>Quant_DR].median()
-df_params['ksn'] = [ksn_DR, ksn_BR]
+ksn_DR = df_chi_DR['m_chi'].loc[df_chi_DR['drainage_area']>Quant_DR]
+ksn_BR = df_chi_BR['m_chi'].loc[df_chi_BR['drainage_area']<Quant_BR]
+ksn_DR_gen = np.random.choice(ksn_DR, 10000, replace=True)
+ksn_BR_gen = np.random.choice(ksn_BR, 10000, replace=True)
 
 # for DR the best-fit concavity from chi analysis is 0.4, BR did not converge
 # use 0.5 because n=/=1 will probably break the nondimensionalization
@@ -97,10 +174,58 @@ df_params['m_sp'] = 0.5 # requirement for DupuitLEM as currently formulated
 df_params['n_sp'] = df_params['m_sp']/df_params['concavity'] 
 # if you use concavity = 0.4, get n>1, consistent with Harel, Mudd, Attal 2016
 
-Ksp = df_params['U']/df_params['ksn']**df_params['n_sp'] # from streampower law, this is the total erodibility coefficient
-df_params['K'] = Ksp/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
+#%%
 
-df_params['v0'] = 50 #10 # window we averaged DEMs over to calculate most quantities
+Ksp_DR = U_gen/ksn_DR_gen**df_params['n_sp']['DR'] # from streampower law, this is the total erodibility coefficient
+Ksp_BR = U_gen/ksn_BR_gen**df_params['n_sp']['BR']
+
+# get quantiles
+q25_DR, med_DR, q75_DR = np.percentile(Ksp_DR, [25, 50, 75])
+q25_BR, med_BR, q75_BR = np.percentile(Ksp_BR, [25, 50, 75])
+
+df_Ksp = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]], 
+                    columns=['q25','q50','q75'], index=['DR','BR'])
+
+#%%
+
+Ksp_Stat = ranksums(Ksp_DR, Ksp_BR)
+
+#%% Violin plot - total erosivity
+
+pos   = [1, 2]
+label = ['Druids Run', 'Baisman Run']
+clrs = ['firebrick', 'royalblue']
+
+Ksp = [np.log10(Ksp_DR*(3600*24*365)), np.log10(Ksp_BR*(3600*24*365))]
+
+fig, ax = plt.subplots(figsize=(4,5))
+parts = ax.violinplot(Ksp, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+ax.vlines(pos, np.log10(np.array([q25_DR, q25_BR])*(3600*24*365)), 
+          np.log10(np.array([q75_DR, q75_BR])*(3600*24*365)), color='k', linestyle='-', lw=5)
+ax.set_ylim((-10,-2))
+ax.set_xticks(pos)
+ax.set_xticklabels(label)
+ax.set_ylabel(r'$\log_{10}(K_{sp} \,\, (1/yr))$')
+ax.set_title('Total Erosivity')
+
+plt.show()
+fig.tight_layout()
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Ksp_violinplot.png')
+
+
+#%%
+df_params['Ksp'] = df_Ksp['q50']
+df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
+
+df_params['v0'] = 30 #10 # window we averaged DEMs over to calculate most quantities
 
 # plt.figure()
 # df_chi_BR['m_chi'].plot.density(color='r', label='Baisman')
@@ -159,8 +284,11 @@ ksat_DR = calc_weighted_avg(df_DR_ksat, 'Rating (micrometers\nper second)') * 1e
 df_DR_soil = pd.read_csv(path_DR+'SoilSurvey/SoilHydraulicProperties_DR.csv')
 df_DR_soil = df_DR_soil[df_DR_soil['musym'].isin(['CeB', 'CeC', 'CeD'])]
 df_grouped = df_DR_soil.groupby('desgnmaster').mean()
-ksat_DR = df_grouped.loc['A']['ksat_r'] * 1e-6 
-b_DR = df_grouped.loc['A']['hzdepb_r'] * 0.0254
+# ksat_DR = df_grouped.loc['A']['ksat_r'] * 1e-6 
+# b_DR = df_grouped.loc['A']['hzdepb_r'] * 0.0254
+
+ksat_DR = df_grouped.loc['A']['ksat_h'] * 1e-6 
+b_DR = df_grouped.loc['A']['hzdepb_h'] * 0.0254
 
 
 # for Baisman Run, soil survey data is too shallow, so we will have to do
@@ -230,7 +358,7 @@ bd_BR = calc_weighted_avg(df_BR_bd, 'Rating (grams per\ncubic centimeter)')
 ne_BR = (1 - bd_BR/particle_density) - na_BR
 
 # df_params['ne'] = [ne_DR, ne_BR]
-df_params['ne'] = [0.2, 0.2]
+df_params['ne'] = [0.25, 0.25]
 
 #%% potential evapotranspiration
 
@@ -251,14 +379,16 @@ The matrix here is:
 geomorph    DR | 'DR'  |  'BRx'
             BR | 'DRx' |  'BR'
 
-where geomorphic is just changing K, since we assume U, D and v0 are the same
+where geomorphic is changing K and D, since we assume U and v0 are the same
 """
 
 df_params.loc['DRx'] = df_params.loc['DR']
 df_params['K'].loc['DRx'] = df_params['K'].loc['BR']
+df_params['D'].loc['DRx'] = df_params['D'].loc['BR']
 
 df_params.loc['BRx'] = df_params.loc['BR']
 df_params['K'].loc['BRx'] = df_params['K'].loc['DR']
+df_params['D'].loc['BRx'] = df_params['D'].loc['DR']
 
 # %% characteristic scales + dimless groups
 
@@ -302,7 +432,7 @@ df_params.drop(columns=['label'], inplace=True)
 #%%
 
 folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
-N = 13
+N = 17
 
 
 for i in df_params.index:

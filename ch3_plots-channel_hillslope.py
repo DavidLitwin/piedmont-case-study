@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import rasterio as rd
 from sklearn.neighbors import KernelDensity
-from scipy.stats import norm
+from scipy.stats import norm, ranksums
 import statsmodels.api as sm
 
 import matplotlib.pyplot as plt
@@ -133,6 +133,10 @@ clrs = ['firebrick', 'royalblue']
 Lh = [df_ht_DR['Lh'].values, df_ht_BR['Lh'].values]
 R = [df_ht_DR['R'].values, df_ht_BR['R'].values]
 
+Lh_stat = ranksums(Lh[0], Lh[1])
+R_stat = ranksums(R[0], R[1])
+
+#%%
 fig, axs = plt.subplots(ncols=2, figsize=(8,5))
 parts = axs[0].violinplot(Lh, pos, vert=True, showmeans=False, showmedians=True,
         showextrema=True)

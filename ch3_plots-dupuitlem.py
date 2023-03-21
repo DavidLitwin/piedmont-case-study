@@ -18,10 +18,10 @@ from generate_colormap import get_continuous_cmap
 
 
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
-base_output_path = 'CaseStudy_11'
-model_runs = np.arange(25)
-nrows = 5
-ncols = 5
+base_output_path = 'CaseStudy_16'
+model_runs = np.arange(4)
+nrows = 2
+ncols = 2
 
 #%% load results and parameters
 
@@ -41,12 +41,12 @@ for ID in model_runs:
 df_params = pd.concat(dfs, axis=1, ignore_index=True).T
 df_params.to_csv('%s/%s/params.csv'%(directory,base_output_path), index=True, float_format='%.3e')
 
-# plot_runs = model_runs
-# df_params['label'] = ['DR', 'BR', 'DRx', 'BRx']
-# plot_array = np.array([[0, 3],
-#                        [2, 1]])
 plot_runs = model_runs
-plot_array = np.flipud(plot_runs.reshape((nrows, ncols))) # note flipped!
+df_params['label'] = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR']
+plot_array = np.array([[0, 3],
+                       [2, 1]])
+# plot_runs = model_runs
+# plot_array = np.flipud(plot_runs.reshape((nrows, ncols))) # note flipped!
 
 
 #%%
@@ -61,7 +61,7 @@ for ID in model_runs:
 plt.legend(frameon=False)
 plt.xlabel(r'$t/t_g$', fontsize=14)
 plt.ylabel(r'$\bar{z} / h_g$', fontsize=14)
-# plt.savefig('%s/%s/r_change.pdf'%(directory, base_output_path), transparent=True, dpi=300)
+plt.savefig('%s/%s/r_change.pdf'%(directory, base_output_path), transparent=True, dpi=300)
 
 #%% plot_runs hillshades
 
@@ -89,7 +89,7 @@ for i in plot_runs:
                     )
     axs[m,n].text(0.04, 
                 0.95, 
-                i, #df_params['label'][i], #
+                df_params['label'][i], #i, #
                 transform=axs[m,n].transAxes, 
                 fontsize=12, 
                 verticalalignment='top',
@@ -147,7 +147,7 @@ for i in plot_runs:
                          )
     axs[m,n].text(0.04, 
                 0.95, 
-                i, #df_params['label'][i], # 
+                df_params['label'][i], # i, #
                 transform=axs[m,n].transAxes, 
                 fontsize=12, 
                 verticalalignment='top',
