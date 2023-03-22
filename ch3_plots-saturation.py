@@ -11,8 +11,7 @@ from sklearn.neighbors import KernelDensity
 import dataretrieval.nwis as nwis
 
 import matplotlib.pyplot as plt
-from matplotlib import cm
-from matplotlib import colors
+from matplotlib import cm, colors, ticker
 
 save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
 
@@ -133,7 +132,7 @@ plt.show()
 paths = glob.glob(path + "saturation/transects_*.csv")
 cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
 
-fig, axs = plt.subplots(ncols=len(paths), figsize=(10,3)) #(5,8)
+fig, axs = plt.subplots(ncols=len(paths), figsize=(8,3)) #(10,3)
 
 for i in range(len(paths)):
     src = rd.open(path + HSfile) # hillshade
@@ -254,17 +253,17 @@ q_path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/'
 
 # load continuous discharge (we'll use it to fill a day where a dilution gage was not done)
 area_DR = 107e4 #m2
-q_DR_cont = pd.read_csv(q_path+'DruidRun_discharge_15min_2022_3-2022_9.csv', 
+dfq_cont = pd.read_csv(q_path+'DruidRun_discharge_15min_2022_3-2022_9.csv', 
                         parse_dates=[0],
                         infer_datetime_format=True)
-q_DR_cont.set_index('Datetime', inplace=True)
-q_DR_cont['Q m/d'] = q_DR_cont['Q m3/s'] * 3600 * 24 * (1/area_DR) # sec/hr * hr/d * 1/m2
+dfq_cont.set_index('Datetime', inplace=True)
+dfq_cont['Q m/d'] = dfq_cont['Q m3/s'] * 3600 * 24 * (1/area_DR) # sec/hr * hr/d * 1/m2
 
 # load dilution gaged Q for Druids Run
 q_DR = pickle.load(open(q_path+'discharge_DR.p', 'rb'))
 dfq = pd.DataFrame.from_dict(q_DR, orient='index', dtype=None, columns=['Q']) # Q in L/s
 t1 = pd.Timestamp('2022-04-27 14:45:00')
-dfq.loc[t1] = q_DR_cont['Q m3/s'].loc[t1] * 1000
+dfq.loc[t1] = dfq_cont['Q m3/s'].loc[t1] * 1000
 dfq = dfq.sort_index()
 dfq['datetime'] = dfq.index
 dfq['Q m/d'] = dfq['Q'] * (1/1000) * 3600 * 24 * (1/area_DR) # m3/liter * sec/hr * hr/d * 1/m2
@@ -283,8 +282,8 @@ dfqug['Q m/d'] = dfqug['Q'] * (1/1000) * 3600 * 24 * (1/area_DRUW) # m/liter * s
 site_BR = '01583580'
 site_PB = '01583570'
 
-dfq = nwis.get_record(sites=site_BR, service='iv', start='2022-08-01', end='2023-02-10')
-dfqug = nwis.get_record(sites=site_PB, service='iv', start='2022-08-01', end='2023-02-10')
+dfq_cont = nwis.get_record(sites=site_BR, service='iv', start='2022-08-01', end='2023-03-21')
+dfqug_cont = nwis.get_record(sites=site_PB, service='iv', start='2022-08-01', end='2023-03-21')
 
 # dfq.to_csv(path+'dfq.csv')
 # dfqug.to_csv(path+'dfqug.csv')
@@ -293,30 +292,30 @@ dfqug = nwis.get_record(sites=site_PB, service='iv', start='2022-08-01', end='20
 
 # area normalized discharge
 area_BR = 381e4 #m2
-dfq['Q m/d'] = dfq['00060']*0.3048**3 * 3600 * 24 * (1/area_BR) #m3/ft3 * sec/hr * hr/d * 1/m2
-dfq.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
+dfq_cont['Q m/d'] = dfq_cont['00060']*0.3048**3 * 3600 * 24 * (1/area_BR) #m3/ft3 * sec/hr * hr/d * 1/m2
+dfq_cont.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
 
 area_PB = 37e4 #m2
-dfqug['Q m/d'] = dfqug['00060']*0.3048**3 * 3600 * 24 * (1/area_PB) #m3/ft3 * sec/hr * hr/d * 1/m2
-dfqug.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
+dfqug_cont['Q m/d'] = dfqug_cont['00060']*0.3048**3 * 3600 * 24 * (1/area_PB) #m3/ft3 * sec/hr * hr/d * 1/m2
+dfqug_cont.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
 
 # index from string to datetime
-dfq['datetime'] = pd.to_datetime(dfq.index, utc=True)
-dfq.set_index('datetime', inplace=True)
+dfq_cont['datetime'] = pd.to_datetime(dfq_cont.index, utc=True)
+dfq_cont.set_index('datetime', inplace=True)
 
-dfqug['datetime'] = pd.to_datetime(dfqug.index, utc=True)
-dfqug.set_index('datetime', inplace=True)
+dfqug_cont['datetime'] = pd.to_datetime(dfqug_cont.index, utc=True)
+dfqug_cont.set_index('datetime', inplace=True)
 
 # get the start times of every saturation survey
 times = dfall.datetime_start.unique()
 times = [time.round('5min') for time in times]
 
 # isolate discharge at those times
-dfq = dfq.loc[times]
+dfq = dfq_cont.loc[times]
 dfq['datetime'] = dfq.index
 dfq['date'] = dfq['datetime'].dt.date
 
-dfqug = dfqug.loc[times]
+dfqug = dfqug_cont.loc[times]
 dfqug['datetime'] = dfqug.index
 dfqug['date'] = dfqug['datetime'].dt.date
 
@@ -343,6 +342,8 @@ dfnew['sat_bin'] = (dfnew['sat_val'] > 0) * 1
 # get basin
 bsn = rd.open(path + basin_name)
 basin = bsn.read(1) > 0 
+bounds = bsn.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
 
 plt.figure()
 plt.imshow(basin,
@@ -623,6 +624,7 @@ shp = TI_plot.shape
 TI_plot = TI_plot.flatten()
 sat_state = np.zeros_like(TI_plot)
 
+Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
 for i, Q in enumerate(Q_all):
     pred = model.predict(exog=dict(TI_filtered=TI_plot, logQ=np.log(Q)*np.ones_like(TI_plot)))
     sat_state += 1*(pred>0.5)
@@ -651,13 +653,75 @@ ofs= 100 #50
 ax.set_xlim((Extent[0]+ofs, Extent[1]-ofs))
 ax.set_ylim((Extent[2]+ofs,Extent[3]-ofs))
 plt.axis('off')
-plt.savefig(save_directory+f'satmap_{site}_{res}.pdf', transparent=True)
-plt.savefig(save_directory+f'satmap_{site}_{res}.png', transparent=True)
+# plt.savefig(save_directory+f'satmap_{site}_{res}.pdf', transparent=True)
+# plt.savefig(save_directory+f'satmap_{site}_{res}.png', transparent=True)
 
 # ax.set_xlim((341200, 341500)) # DR bounds
 # ax.set_ylim((4.36490e6,4.36511e6)) # DR Bounds
 # ax.set_xlim((355100,354600)) # PB bounds
 # ax.set_ylim((4.3715e6,4.3722e6)) # PB Bounds
+
+
+#%% derive sat class from regression
+
+TI_plot = tif.read(1).astype(float)
+
+Q_all = dfq_cont['Q m/d'].values
+TI_range = np.linspace(np.min(TI_plot), np.max(TI_plot), 500)
+sat_state = np.zeros_like(TI_range)
+
+
+Q_all = Q_all[~np.isnan(Q_all)]
+for i, Q in enumerate(Q_all):
+    pred = model.predict(exog=dict(TI_filtered=TI_range, logQ=np.log(Q)*np.ones_like(TI_range)))
+    sat_state += 1*(pred.values>0.5)
+
+sat_state = sat_state / len(Q_all)
+sat_class = np.ones_like(sat_state)
+sat_class[sat_state < 0.05] = 0
+sat_class[sat_state > 0.95] = 2
+
+x = np.digitize(TI_plot, TI_range)
+x[x==500] = 499
+sat_class_plot = sat_class[x]
+
+#%% plot classified saturated areas
+
+# colorbar approach courtesy of https://stackoverflow.com/a/53361072/11627361, https://stackoverflow.com/a/60870122/11627361, 
+
+labels = ["dry", "variable", "wet"]    
+L1 = ["peru", "dodgerblue", "navy"]
+
+cmap = colors.ListedColormap(L1)
+norm = colors.BoundaryNorm(np.arange(-0.5, 3), cmap.N)
+fmt = ticker.FuncFormatter(lambda x, pos: labels[norm(x)])
+
+# hillshade
+src = rd.open(path + HSfile_res) # hillshade
+bounds = src.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+hs = src.read(1)
+shp = TI_plot.shape
+hs = np.ma.masked_array(hs, mask=hs==-9999)
+
+fig, ax = plt.subplots(figsize=(10,6)) #(6,6)
+ax.imshow(hs, cmap='binary', 
+                extent=Extent, origin="upper", vmin=160)
+im = ax.imshow(sat_class_plot.reshape(shp), 
+                        origin="upper", 
+                        extent=Extent, 
+                        cmap=cmap,
+                        norm=norm,
+                        alpha=0.7,
+                        interpolation="none",
+                        )
+fig.colorbar(im, format=fmt, ticks=np.arange(0,3))
+ofs= 100 #50
+ax.set_xlim((Extent[0]+ofs, Extent[1]-ofs))
+ax.set_ylim((Extent[2]+ofs,Extent[3]-ofs))
+plt.axis('off')
+plt.savefig(save_directory+f'satclass_{site}_{res}.pdf', transparent=True)
+plt.savefig(save_directory+f'satclass_{site}_{res}.png', transparent=True)
 
 #%% calulate a transmissivity: logTI + logQ method
 

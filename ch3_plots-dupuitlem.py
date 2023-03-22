@@ -121,8 +121,6 @@ for i in plot_runs:
     n = np.where(plot_array==i)[1][0]
     
     grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
-    sat_storm = grid.at_node['sat_mean_end_storm']
-    sat_interstorm = grid.at_node['sat_mean_end_interstorm']
     sat_class = grid.at_node['saturation_class']
     labels = ["dry", "variable", "wet"]    
     

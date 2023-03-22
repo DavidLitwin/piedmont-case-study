@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from datetime import timedelta
+from datetime import timedelta, date
 import statsmodels.api as sm
 
 import matplotlib.pyplot as plt
@@ -130,7 +130,7 @@ ax.scatter(dfe_BR['Peakflow ends'],
            Qb_plot.loc[dfe_BR['Peakflow ends']], 
            color='r', s=s, zorder=101)
 ax.set_yscale('log')
-ax.set_ylabel('Q (mm/hr)')
+ax.set_ylabel('$Q$, $Q_b$ (mm/hr)')
 
 ax1 = ax.twinx()
 ax1.plot(P_plot)
@@ -141,7 +141,7 @@ ax1.scatter(dfe_BR['Precip ends'],
            P_plot.loc[dfe_BR['Precip ends']], 
            color='r', s=s, zorder=103)
 ax1.set_ylim(2*P_plot.max(), 0)
-ax1.set_ylabel('P (mm/hr)')
+ax1.set_ylabel('$P$ (mm/hr)')
 fig.autofmt_xdate()
 plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BR_Q_P.png', transparent=True)
 plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BR_Q_P.pdf', transparent=True)
@@ -217,8 +217,9 @@ ax.scatter(dfe_DR['Peakflow starts'],
 ax.scatter(dfe_DR['Peakflow ends'], 
            Qb_plot.loc[dfe_DR['Peakflow ends']], 
            color='r', s=s, zorder=101)
+ax.set_xlim((date(2022,4,1), date(2022,12,1)))
 ax.set_yscale('log')
-ax.set_ylabel('Q (mm/hr)')
+ax.set_ylabel('$Q$, $Q_b$ (mm/hr)')
 
 ax1 = ax.twinx()
 ax1.plot(P_plot)
@@ -229,7 +230,7 @@ ax1.scatter(dfe_DR['Precip ends'],
            P_plot.loc[dfe_DR['Precip ends']], 
            color='r', s=s, zorder=103)
 ax1.set_ylim(2*P_plot.max(), 0)
-ax1.set_ylabel('P (mm/hr)')
+ax1.set_ylabel('$P$ (mm/hr)')
 fig.autofmt_xdate()
 plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DR_Q_P.png', transparent=True)
 plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DR_Q_P.pdf', transparent=True)
@@ -311,15 +312,15 @@ axs[1].axline([0,0], [1,1], color='k', linestyle='--')
 axs[1].text(0.1, 
             0.9, 
             # r'$r^2 = %.2f$'%results_BR.rsquared,
-            r'$a = %.3f \pm %.3f$'%(results_BR.params[1], results_BR.bse[1]), 
+            r'$a = %.2f \pm %.2f$'%(results_BR.params[1], results_BR.bse[1]), 
             transform=axs[1].transAxes
             )
 axs[1].set_ylim((0.005,60))
 axs[1].set_xlim((2,110))
 axs[1].set_yscale('log')
 axs[1].set_xscale('log')
-axs[1].set_ylabel('Event Q (mm)')
-axs[1].set_xlabel('Event P (mm)')
+axs[1].set_ylabel('Event $Q_f$ (mm)')
+axs[1].set_xlabel('Event $P$ (mm)')
 axs[1].set_title('Baisman Run')
 # axs[1].set_aspect(0.6)
 
@@ -335,19 +336,19 @@ axs[0].axline([0,0], [1,1], color='k', linestyle='--')
 axs[0].text(0.1, 
             0.9, 
             # r'$r^2 = %.2f$'%results_DR.rsquared,
-            r'$a = %.3f \pm %.3f$'%(results_DR.params[1], results_DR.bse[1]), 
+            r'$a = %.2f \pm %.2f$'%(results_DR.params[1], results_DR.bse[1]), 
             transform=axs[0].transAxes
             )
 axs[0].set_ylim((0.005,60))
 axs[0].set_xlim((2,110))
 axs[0].set_yscale('log')
 axs[0].set_xscale('log')
-axs[0].set_ylabel('Event Q (mm)')
-axs[0].set_xlabel('Event P (mm)')
+axs[0].set_ylabel('Event $Q_f$ (mm)')
+axs[0].set_xlabel('Event $P$ (mm)')
 axs[0].set_title('Druids Run')
 # axs[0].set_aspect(0.6)
 # cax = axs[1].inset_axes([1.04, 0.1, 0.05, 0.8])
-fig.colorbar(sc, ax=axs, label='Initial Baseflow (mm/d)')
+fig.colorbar(sc, ax=axs, label='Initial $Q_b$ (mm/d)')
 
 plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png', transparent=True)
 plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.pdf', transparent=True)
