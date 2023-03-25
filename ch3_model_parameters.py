@@ -9,6 +9,7 @@ import pickle
 from scipy.stats import norm, truncnorm, ranksums
 from calc_storm_stats import get_event_interevent_arrays
 
+figpath = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
 
 path_DR = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
 path_BR = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
@@ -134,7 +135,7 @@ ax.set_title('Hillslope Diffusivity')
 
 plt.show()
 fig.tight_layout()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/D_violinplot.png')
+plt.savefig(figpath + 'D_violinplot.png', dpi=300)
 
 
 # %% K, m, n: streampower coefficients
@@ -190,7 +191,7 @@ df_Ksp = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]],
 
 Ksp_Stat = ranksums(Ksp_DR, Ksp_BR)
 
-#%% Violin plot - total erosivity
+#%% Violin plot - total erodibility
 
 pos   = [1, 2]
 label = ['Druids Run', 'Baisman Run']
@@ -214,11 +215,11 @@ ax.set_ylim((-10,-2))
 ax.set_xticks(pos)
 ax.set_xticklabels(label)
 ax.set_ylabel(r'$\log_{10}(K_{sp} \,\, (1/yr))$')
-ax.set_title('Total Erosivity')
+ax.set_title('Total Erodibility')
 
 plt.show()
 fig.tight_layout()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Ksp_violinplot.png')
+plt.savefig(figpath + 'Ksp_violinplot.png', dpi=300)
 
 
 #%%
@@ -265,6 +266,37 @@ df_params['p'] = df_params['ds']/(df_params['tr'] + df_params['tb'])
 # from USGS streamstats
 # df_params['p'] = 45.6 * 0.0254 / (3600*24*365) # m/s
 
+
+# %% permeable thickness and hydralic conductivity
+
+# for DR, select the dominant soil type, chrome silt loam. All slope classes (CeB, CeC, CeD)
+# have the same values, so aggregate them together. There's a permeability contrast at the A
+# horizon so we'll focus on flow above that layer
+df_DR_soil = pd.read_csv(path_DR+'SoilSurvey/SoilHydraulicProperties_DR.csv')
+df_DR_soil = df_DR_soil[df_DR_soil['musym'].isin(['CeB', 'CeC', 'CeD'])]
+df_grouped = df_DR_soil.groupby('desgnmaster').mean()
+b_DR = df_grouped.loc['A']['hzdepb_r'] * 0.0254 #m
+
+# transmissivity we calculated using the saturation survey data
+dfT_DR = pd.read_csv(figpath+'transmissivity_DR_logTIQ_5.csv')
+ksat_DR = (dfT_DR['Trans. med [m2/d]'][0]/(24*3600))/b_DR  #m/s
+
+# for Baisman Run, soil survey data is too shallow, so we will have to do
+# some of our own estimates. Here I'm assuming soil goes to the maximum depth reported.
+# this is likely not quite true - would be better to talk to Cassie or get the actual
+# horizon depths from the survey
+df_BR_depth = pd.read_csv(path_BR+'SoilSurvey/Bedrock_depth.csv')
+b_soil = calc_weighted_avg(df_BR_depth, 'Rating (centimeters) ') / 100 # meters
+b_saprolite = 2 # meters. An estimate for average thickness
+b_BR = b_soil + b_saprolite
+
+# transmissivity we calculated using the saturation survey data
+dfT_BR = pd.read_csv(figpath+'transmissivity_BR_logTIQ_5.csv')
+ksat_BR = (dfT_BR['Trans. med [m2/d]'][0]/(24*3600))/b_BR  #m/s
+
+df_params['ksat'] = [ksat_DR, ksat_BR]
+df_params['b'] = [b_DR, b_BR]
+
 # %% permeable thickness and hydralic conductivity
 """
 # for Druids Run, we will just take the weighted mean of the survey data,
@@ -276,7 +308,7 @@ b_DR = calc_weighted_avg(df_DR_depth, 'Rating (centimeters) ') / 100 # meters
 # [Depth to bedrock] * [depth integrated ksat] = transmissivity (I think).
 df_DR_ksat = pd.read_csv(path_DR+'SoilSurvey/Ksat_avg.csv')
 ksat_DR = calc_weighted_avg(df_DR_ksat, 'Rating (micrometers\nper second)') * 1e-6 # m/s
-"""
+
 
 # for DR, select the dominant soil type, chrome silt loam. All slope classes (CeB, CeC, CeD)
 # have the same values, so aggregate them together. There's a permeability contrast at the A
@@ -308,7 +340,7 @@ ksat_soil = calc_weighted_avg(df_BR_ksat, 'Rating (micrometers\nper second)') * 
 ksat_saprolite = 0.27 * 0.01 * (1/3600) # m/s from Vepraskas et al 1991 (geometric mean of ksat for mica schist saprolite)
 ksat_BR = (ksat_soil*b_soil + ksat_saprolite*b_saprolite)/b_BR
 
-"""
+
 # it's a little more complicated to use the full dataset at BR. This is unfinished, but the idea is to 
 # aggregate by soil horizon and area covered, using just the A and B horizons,
 # and then add the saprolite using a separate value. 
@@ -324,10 +356,12 @@ df_AOI['prop'] = 0.01 * df_AOI['Percent of AOI'].str.strip('%').astype(float)
 df_AOI.drop(columns=['Percent of AOI', 'Map unit symbol '], inplace=True)
 
 df_BR_soil = df_BR_soil.merge(df_AOI, how='outer', on='musym')
-"""
+
 
 df_params['ksat'] = [ksat_DR, ksat_BR]
 df_params['b'] = [b_DR, b_BR]
+
+"""
 
 # %% water contents: ne and na
 
@@ -414,7 +448,7 @@ dtg_max_nd = 2e-3 # maximum geomorphic timestep in units of tg [-]
 Th_nd = 25 # hydrologic time in units of (tr+tb) [-]
 bin_capacity_nd = 0.05 # bin capacity as a proportion of mean storm depth
 
-df_params['Nx'] = 125 # number of grid cells width and height
+df_params['Nx'] = 200 #125 # number of grid cells width and height
 df_params['Nz'] = round((df_params['b']*df_params['na'])/(bin_capacity_nd*df_params['ds']))
 df_params['Tg'] = 5e7*(365*24*3600) # Tg_nd*df_params['tg'] # Total geomorphic simulation time [s]
 df_params['ksf'] = 5000 #ksf_base/df_params['beta'] # morphologic scaling factor
@@ -432,7 +466,7 @@ df_params.drop(columns=['label'], inplace=True)
 #%%
 
 folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
-N = 17
+N = 18
 
 
 for i in df_params.index:

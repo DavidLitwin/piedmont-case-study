@@ -350,7 +350,7 @@ axs[0].set_title('Druids Run')
 # cax = axs[1].inset_axes([1.04, 0.1, 0.05, 0.8])
 fig.colorbar(sc, ax=axs, label='Initial $Q_b$ (mm/d)')
 
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png', transparent=True)
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png', transparent=True, dpi=300)
 plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.pdf', transparent=True)
 
 df_rr_reg = pd.DataFrame(data=[[results_DR.params[1], results_DR.bse[1], results_DR.params[0], results_DR.bse[0], results_DR.rsquared],

@@ -18,7 +18,7 @@ from generate_colormap import get_continuous_cmap
 
 
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
-base_output_path = 'CaseStudy_16'
+base_output_path = 'CaseStudy_19'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2

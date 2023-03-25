@@ -17,7 +17,7 @@ save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_deli
 
 #%%
 
-site = 'BR'
+site = 'DR'
 res = 5
 
 if site=='DR' and res>=1:
@@ -53,130 +53,6 @@ elif site=='BR' and res<1:
 else:
     print('%s at res %d is not there'%(site,res))
 
-#%% Saturation on hillshade combined with saturation-TI
-
-paths = glob.glob(path + "saturation/transects_*.csv")
-cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
-
-fig, axs = plt.subplots(nrows=len(paths), ncols=2, figsize=(5,6)) #(5,8)
-
-for i in range(len(paths)):
-    src = rd.open(path + HSfile) # hillshade
-    df = pd.read_csv(paths[i]) # sampled pts
-    A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
-    df = df[A]
-
-    bounds = src.bounds
-    Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
-    Extent_90 = [bounds.bottom,bounds.top,bounds.right,bounds.left]
-
-    grouped = df.groupby('Name')
-    for key, group in grouped:
-        if site=='DR':
-            group.plot(ax=axs[i,0], kind='scatter', x='X', y='Y', 
-                        label=key, color=cols[key], legend=False, s=10
-                        )
-            cs = axs[i,0].imshow(src.read(1), cmap='binary', 
-                            extent=Extent, vmin=100, origin="upper")
-            axs[i,0].set_xlim((341200, 341500)) # DR bounds
-            axs[i,0].set_ylim((4.36490e6,4.36511e6)) # DR Bounds
-        else:
-            group.plot(ax=axs[i,0], kind='scatter', x='Y', y='X', 
-                        label=key, color=cols[key], legend=False, s=10
-                        )
-            cs = axs[i,0].imshow(np.rot90(src.read(1), k=3),
-                            cmap='binary', 
-                            extent=Extent_90, 
-                            vmin=100,
-                            origin="upper")       
-            axs[i,0].set_ylim((355100,354600)) # PB bounds
-            axs[i,0].set_xlim((4.3715e6,4.3722e6)) # PB Bounds
-    axs[i,0].set_xticks([])
-    axs[i,0].set_yticks([])
-    axs[i,0].set_xlabel('')
-    axs[i,0].set_ylabel('')
-    axs[i,0].set_title(df.BeginTime[1][0:10])
-
-    sat_val_dict = {'N':0, 'Ys':1, 'Yp':2, 'Yf':3}
-    df['sat_val'] = df['Name'].apply(lambda x: sat_val_dict[x])
-    coords = [(x,y) for x, y in zip(df['X'], df['Y'])]
-
-    # open TI filtered and extract at coordinates
-    tis = rd.open(path+TIfile)
-    df['TI_filtered'] = [x for x in tis.sample(coords)]
-    tis.close()
-
-    np.random.seed(2023)
-    df['sat_perturbed'] = df['sat_val'] + 0.05*np.random.randn(len(df))
-
-    for key, group in grouped:
-            group.plot(ax=axs[i,1], kind='scatter', x='TI_filtered', y='sat_perturbed', 
-                        label=key, color=cols[key], legend=False,
-                        )
-    axs[i,1].set_yticks([0,1,2,3])
-    axs[i,1].set_yticklabels(['N', 'Ys', 'Yp', 'Yf'])
-    axs[i,1].set_ylabel('')
-
-    if i == len(paths)-1:
-        axs[i,1].set_xlabel('TI')
-    else:
-        axs[i,1].set_xlabel('')
-
-plt.tight_layout()
-# plt.savefig(save_directory+f'sat_TI_{site}_{res}m.pdf', transparent=True)
-# plt.savefig(save_directory+f'sat_TI_{site}_{res}m.png', transparent=True)
-plt.show()
-
-#%% just map view
-
-paths = glob.glob(path + "saturation/transects_*.csv")
-cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
-
-fig, axs = plt.subplots(ncols=len(paths), figsize=(8,3)) #(10,3)
-
-for i in range(len(paths)):
-    src = rd.open(path + HSfile) # hillshade
-    df = pd.read_csv(paths[i]) # sampled pts
-    A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
-    df = df[A]
-
-    bounds = src.bounds
-    Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
-    Extent_90 = [bounds.bottom,bounds.top,bounds.right,bounds.left]
-
-    grouped = df.groupby('Name')
-    for key, group in grouped:
-        if site=='DR':
-            group.plot(ax=axs[i], kind='scatter', x='X', y='Y', 
-                        label=key, color=cols[key], legend=False, s=10
-                        )
-            cs = axs[i].imshow(src.read(1), cmap='binary', 
-                            extent=Extent, vmin=100, origin="upper")
-            axs[i].set_xlim((341200, 341500)) # DR bounds
-            axs[i].set_ylim((4.36490e6,4.36511e6)) # DR Bounds
-        else:
-            group.plot(ax=axs[i], kind='scatter', x='Y', y='X', 
-                        label=key, color=cols[key], legend=False, s=10
-                        )
-            cs = axs[i].imshow(np.rot90(src.read(1), k=3),
-                            cmap='binary', 
-                            extent=Extent_90, 
-                            vmin=100,
-                            origin="upper")       
-            axs[i].set_ylim((355100,354600)) # PB bounds
-            axs[i].set_xlim((4.3715e6,4.3722e6)) # PB Bounds
-    axs[i].set_xticks([])
-    axs[i].set_yticks([])
-    axs[i].set_xlabel('')
-    axs[i].set_ylabel('')
-    axs[i].set_title(df.BeginTime[1][0:10])
-
-plt.tight_layout()
-plt.savefig(save_directory+f'sat_{site}_{res}m.pdf', transparent=True)
-plt.savefig(save_directory+f'sat_{site}_{res}m.png', transparent=True)
-plt.show()
-
-
 #%% individual saturation survey
 
 sat_path = path + "saturation/transects_20230126.csv"
@@ -186,7 +62,7 @@ cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
 fig, ax = plt.subplots(figsize=(4,4))
 
 src = rd.open(path + HSfile) # hillshade
-df = pd.read_csv(paths[i]) # sampled pts
+df = pd.read_csv(sat_path) # sampled pts
 A = [True if X in ['N', 'Ys', 'Yp', 'Yf'] else False for X in df['Name']]
 df = df[A]
 
@@ -225,6 +101,7 @@ plt.tight_layout()
 # plt.savefig(save_directory+f'sat_{site}_{res}m.pdf', transparent=True)
 # plt.savefig(save_directory+f'sat_{site}_{res}m.png', transparent=True)
 plt.show()
+
 
 #%% assemble all saturation dataframes
 
@@ -358,29 +235,136 @@ tif = rd.open(path+TIfile)
 TI = tif.read(1).astype(float)
 TI = TI[basin]
 
-#%% logistic regression for each day separately
 
-Tmean = lambda b0, b1, Q: np.exp((-b0)/b1)*Q
+#%% Saturation on hillshade combined with saturation-TI
 
+cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
 
-grouped = dfnew.groupby('date')
-T_estimates = []
-for key, group in grouped:
+src = rd.open(path + HSfile) # hillshade
+bounds = src.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+Extent_90 = [bounds.bottom,bounds.top,bounds.right,bounds.left]
 
-    model = smf.logit('sat_bin ~ TI_filtered', data=group).fit()
+fig, axs = plt.subplots(nrows=len(dfnew.date.unique()), ncols=2, figsize=(5,8)) #(5,6)
 
-    covs = model.cov_params()
-    means = model.params
+grouped_date = dfnew.groupby('date')
+i = 0
+for date, df in grouped_date:
 
-    samples = np.random.multivariate_normal(means, covs, size=100000)
+    grouped = df.groupby('Name')
+    for key, group in grouped:
+        if site=='DR':
+            group.plot(ax=axs[i,0], kind='scatter', x='X', y='Y', 
+                        label=key, color=cols[key], legend=False, s=10
+                        )
+            cs = axs[i,0].imshow(src.read(1), cmap='binary', 
+                            extent=Extent, vmin=100, origin="upper")
+            axs[i,0].set_xlim((341200, 341500)) # DR bounds
+            axs[i,0].set_ylim((4.36490e6,4.36511e6)) # DR Bounds
 
-    Tcalc = Tmean(samples[:,0], samples[:,1], group['Q m/d'].iloc[0])
-    T_median = np.median(Tcalc)
-    T_lq = np.percentile(Tcalc, 25)
-    T_uq = np.percentile(Tcalc, 75)
+            if i==0:
+                axs[i,0].plot([341430, 341480], [4364920, 4364920], color='k', linewidth=4)
+                axs[i,0].text(341425, 4364930, '50 m', fontsize=8)
+        else:
+            group.plot(ax=axs[i,0], kind='scatter', x='Y', y='X', 
+                        label=key, color=cols[key], legend=False, s=10
+                        )
+            cs = axs[i,0].imshow(np.rot90(src.read(1), k=3),
+                            cmap='binary', 
+                            extent=Extent_90, 
+                            vmin=100,
+                            origin="upper")   
+            axs[i,0].set_ylim((355100,354600)) # PB bounds
+            axs[i,0].set_xlim((4.3715e6,4.3722e6)) # PB Bounds
 
-    T_estimates.append([T_median, T_lq, T_uq])
+    axs[i,0].set_xticks([])
+    axs[i,0].set_yticks([])
+    axs[i,0].set_xlabel(r'$Q = %.2f$ mm/d'%(df['Q'].iloc[0]*1000))  
+    # axs[i,0].set_xlabel('')
+    axs[i,0].set_ylabel('')
+    axs[i,0].set_title(str(date), fontsize=10)
 
+    np.random.seed(2023)
+    df['sat_perturbed'] = df['sat_val'] + 0.05*np.random.randn(len(df))
+
+    for key, group in grouped:
+            group.plot(ax=axs[i,1], kind='scatter', x='TI_filtered', y='sat_perturbed', 
+                        label=key, color=cols[key], legend=False,
+                        )
+    axs[i,1].set_yticks([0,1,2,3])
+    axs[i,1].set_yticklabels(['N', 'Ys', 'Yp', 'Yf'])
+    axs[i,1].set_ylabel('')
+
+    if i == len(paths)-1:
+        axs[i,1].set_xlabel('$\log(TI)$')
+    else:
+        axs[i,1].set_xlabel('')
+
+    i += 1
+
+plt.tight_layout()
+plt.savefig(save_directory+f'sat_TI_{site}_{res}m.pdf', transparent=True)
+plt.savefig(save_directory+f'sat_TI_{site}_{res}m.png', transparent=True)
+plt.show()
+
+#%% just map view
+
+cols = {'N':"peru", 'Ys':"dodgerblue", 'Yp':"blue", 'Yf':"navy"}
+
+src = rd.open(path + HSfile) # hillshade
+bounds = src.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+Extent_90 = [bounds.bottom,bounds.top,bounds.right,bounds.left]
+
+fig, axs = plt.subplots(ncols=len(dfnew.date.unique()), figsize=(8,3)) #(10,3)
+
+grouped_date = dfnew.groupby('date')
+i = 0
+for date, df in grouped_date:
+
+    grouped = df.groupby('Name')
+    for key, group in grouped:
+        if site=='DR':
+            group.plot(ax=axs[i], kind='scatter', x='X', y='Y', 
+                        label=key, color=cols[key], legend=False, s=10
+                        )
+            cs = axs[i].imshow(src.read(1), cmap='binary', 
+                            extent=Extent, vmin=100, origin="upper")
+            axs[i].set_xlim((341200, 341500)) # DR bounds
+            axs[i].set_ylim((4.36490e6,4.36511e6)) # DR Bounds
+
+            if i==0:
+                axs[i].plot([341430, 341480], [4364920, 4364920], color='k', linewidth=4)
+                axs[i].text(341425, 4364930, '50 m', fontsize=8)
+        else:
+            group.plot(ax=axs[i], kind='scatter', x='Y', y='X', 
+                        label=key, color=cols[key], legend=False, s=10
+                        )
+            cs = axs[i].imshow(np.rot90(src.read(1), k=3),
+                            cmap='binary', 
+                            extent=Extent_90, 
+                            vmin=100,
+                            origin="upper")   
+            if i==0:
+                axs[i].plot([4372000, 4372100], [355050, 355050], color='k', linewidth=4)
+                axs[i].text(4371980, 355020, '100 m', fontsize=8)
+
+            axs[i].set_ylim((355100,354600)) # PB bounds
+            axs[i].set_xlim((4.3715e6,4.3722e6)) # PB Bounds
+
+    axs[i].set_xticks([])
+    axs[i].set_yticks([])
+    axs[i].set_xlabel(r'$Q = %.2f$ mm/d'%(df['Q'].iloc[0]*1000))  
+    # axs[i].set_xlabel('')
+    axs[i].set_ylabel('')
+    axs[i].set_title(str(date), fontsize=10)
+
+    i += 1
+
+plt.tight_layout()
+plt.savefig(save_directory+f'sat_{site}_{res}m.pdf', transparent=True)
+plt.savefig(save_directory+f'sat_{site}_{res}m.png', transparent=True, dpi=300)
+plt.show()
 
 #%% Logistic regression: sat_bin ~ logTIQ
 
@@ -398,37 +382,11 @@ with open(save_directory+f'summary_{site}_logTIQ_{res}.txt', 'w') as fh:
 # predict in sample
 in_sample = pd.DataFrame({'prob':model.predict()})
 
-#%% calulate a transmissivity: logTIQ method
-
-p = 0.35
-rhostar = np.log(p/(1-p))
-Tmean = lambda b0, b1: np.exp((rhostar-b0)/b1)
-
-covs = model.cov_params()
-means = model.params
-
-samples = np.random.multivariate_normal(means, covs, size=100000)
-
-Tcalc = Tmean(samples[:,0], samples[:,1])
-T_median = np.median(Tcalc)
-T_lq = np.percentile(Tcalc, 25)
-T_uq = np.percentile(Tcalc, 75)
-
-dfT = pd.DataFrame({'Trans. med [m2/d]':T_median,
-              'Trans. lq [m2/d]': T_lq,
-              'Trans. uq [m2/d]': T_uq,
-              'b0':means[0],
-              'b1':means[1]},
-              index=[0]
-              )
-# dfT.to_csv(save_directory+f'transmissivity_{site}_logTIQ_{res}.csv')
-
-
 #%% calculate transmissivity: range of thresholds
 
-N = 50
-# p_all = np.linspace(0.2,0.7,N)
-p_all = np.linspace(0.05,0.7,N)
+N = 1000
+p_all = np.linspace(0.2,0.7,N)
+# p_all = np.linspace(0.05,0.7,N)
 rhostar = lambda p: np.log(p/(1-p))
 Tmean = lambda b0, b1, p: np.exp((rhostar(p)-b0)/b1)
 
@@ -463,7 +421,7 @@ ax.axline([0,0], [1,1])
 ax.set_xlabel('False Positive Ratio')
 ax.set_ylabel('True Positive Ratio')
 fig.colorbar(sc, label='threshold')
-plt.savefig(save_directory+'FPR_TPR_thresh_%s.png'%site)
+# plt.savefig(save_directory+'FPR_TPR_thresh_%s.png'%site)
 
 fig, ax = plt.subplots()
 sc = ax.scatter(1-spec, sens, c=T_all[:,0], cmap='plasma', norm=colors.LogNorm())
@@ -471,7 +429,7 @@ ax.axline([0,0], [1,1])
 ax.set_xlabel('False Positive Ratio')
 ax.set_ylabel('True Positive Ratio')
 fig.colorbar(sc, label='Transmissivity')
-plt.savefig(save_directory+'FPR_TPR_trans_%s.png'%site)
+# plt.savefig(save_directory+'FPR_TPR_trans_%s.png'%site)
 
 fig, ax = plt.subplots()
 sc = ax.scatter(T_all[:,0], dist, c=p_all)
@@ -479,7 +437,24 @@ ax.set_xscale('log')
 ax.set_xlabel('Transmissivity')
 ax.set_ylabel('Distance from FPR-TPR 1:1')
 fig.colorbar(sc, label='Threshold')
-plt.savefig(save_directory+'trans_dist_thresh_%s.png'%site)
+# plt.savefig(save_directory+'trans_dist_thresh_%s.png'%site)
+
+#%% select max and save
+
+i = np.argmax(dist)
+T_select = T_all[i,:]
+
+dfT = pd.DataFrame({'Trans. med [m2/d]':T_select[0],
+              'Trans. lq [m2/d]': T_select[1],
+              'Trans. uq [m2/d]': T_select[2],
+              'b0':means[0],
+              'b1':means[1],
+              'thresh':p_all[i],
+              'dist':dist[i]},
+              index=[0]
+              )
+dfT.to_csv(save_directory+f'transmissivity_{site}_logTIQ_{res}.csv)
+
 
 #%% Predict out of sample, and plot with TI CDF
 
@@ -897,3 +872,55 @@ ax.set_yticks([0,1,2,3])
 ax.set_yticklabels(['N', 'Ys', 'Yp', 'Yf'])
 ax.set_xlabel('TI')
 plt.show()
+
+
+
+#%% calulate a transmissivity: logTIQ method
+
+p = 0.35
+rhostar = np.log(p/(1-p))
+Tmean = lambda b0, b1: np.exp((rhostar-b0)/b1)
+
+covs = model.cov_params()
+means = model.params
+
+samples = np.random.multivariate_normal(means, covs, size=100000)
+
+Tcalc = Tmean(samples[:,0], samples[:,1])
+T_median = np.median(Tcalc)
+T_lq = np.percentile(Tcalc, 25)
+T_uq = np.percentile(Tcalc, 75)
+
+dfT = pd.DataFrame({'Trans. med [m2/d]':T_median,
+              'Trans. lq [m2/d]': T_lq,
+              'Trans. uq [m2/d]': T_uq,
+              'b0':means[0],
+              'b1':means[1]},
+              index=[0]
+              )
+# dfT.to_csv(save_directory+f'transmissivity_{site}_logTIQ_{res}.csv')
+
+
+#%% logistic regression for each day separately
+
+Tmean = lambda b0, b1, Q: np.exp((-b0)/b1)*Q
+
+
+grouped = dfnew.groupby('date')
+T_estimates = []
+for key, group in grouped:
+
+    model = smf.logit('sat_bin ~ TI_filtered', data=group).fit()
+
+    covs = model.cov_params()
+    means = model.params
+
+    samples = np.random.multivariate_normal(means, covs, size=100000)
+
+    Tcalc = Tmean(samples[:,0], samples[:,1], group['Q m/d'].iloc[0])
+    T_median = np.median(Tcalc)
+    T_lq = np.percentile(Tcalc, 25)
+    T_uq = np.percentile(Tcalc, 75)
+
+    T_estimates.append([T_median, T_lq, T_uq])
+
