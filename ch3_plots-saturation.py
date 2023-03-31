@@ -162,8 +162,10 @@ site_PB = '01583570'
 dfq_cont = nwis.get_record(sites=site_BR, service='iv', start='2022-08-01', end='2023-03-21')
 dfqug_cont = nwis.get_record(sites=site_PB, service='iv', start='2022-08-01', end='2023-03-21')
 
-# dfq.to_csv(path+'dfq.csv')
-# dfqug.to_csv(path+'dfqug.csv')
+# load existing data
+# path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/"
+# dfq_cont = pd.read_csv(path_BR+'dfq.csv', index_col='datetime')
+# dfqug_cont = pd.read_csv(path_BR+'dfqug.csv', index_col='datetime')
 
 #%% Baisman run: process Q
 
@@ -316,7 +318,7 @@ bounds = src.bounds
 Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
 Extent_90 = [bounds.bottom,bounds.top,bounds.right,bounds.left]
 
-fig, axs = plt.subplots(ncols=len(dfnew.date.unique()), figsize=(8,3)) #(10,3)
+fig, axs = plt.subplots(nrows=len(dfnew.date.unique()), figsize=(3,6)) #(3,8)
 
 grouped_date = dfnew.groupby('date')
 i = 0
@@ -362,9 +364,34 @@ for date, df in grouped_date:
     i += 1
 
 plt.tight_layout()
-plt.savefig(save_directory+f'sat_{site}_{res}m.pdf', transparent=True)
-plt.savefig(save_directory+f'sat_{site}_{res}m.png', transparent=True, dpi=300)
+plt.savefig(save_directory+f'sat_{site}_{res}m_rows.pdf', transparent=True)
+plt.savefig(save_directory+f'sat_{site}_{res}m_rows.png', transparent=True, dpi=300)
 plt.show()
+
+#%% location on hydrograph
+
+if site == 'DR':
+    path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/'
+else:
+    path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/'
+dfq_plot = pd.read_csv(path+'df_qbp.csv', index_col='Date', parse_dates=True)
+
+
+P_plot = dfq_plot['P (mm)'] * 4 # mm/hr
+Q_plot = dfq_plot['Total runoff [m^3 s^-1]'] * (1/area_DR) * 3600 * 1000 # 1/m2 sec/hr mm/m
+Qb_plot = dfq_plot['Baseflow [m^3 s^-1]'] * (1/area_DR) * 3600 * 1000 # 1/m2 sec/hr mm/m
+
+times = dfnew.datetime_start.unique()
+
+fig, ax = plt.subplots(figsize=(8,4))
+ax.plot(Q_plot, 'k-')
+ax.plot(Qb_plot, 'b-')
+ax.scatter(times, 
+           np.ones(len(times)), 
+           color='r', s=10, zorder=101)
+# ax.set_xlim((date(2022,4,1), date(2022,12,1)))
+ax.set_yscale('log')
+ax.set_ylabel('$Q$, $Q_b$ (mm/hr)')
 
 #%% Logistic regression: sat_bin ~ logTIQ
 
@@ -453,7 +480,7 @@ dfT = pd.DataFrame({'Trans. med [m2/d]':T_select[0],
               'dist':dist[i]},
               index=[0]
               )
-dfT.to_csv(save_directory+f'transmissivity_{site}_logTIQ_{res}.csv)
+dfT.to_csv(save_directory+f'transmissivity_{site}_logTIQ_{res}.csv')
 
 
 #%% Predict out of sample, and plot with TI CDF
@@ -556,7 +583,7 @@ plt.savefig(save_directory+f'pred_sat_ti_cdf_{site}_logTI_logQ_{res}.pdf', trans
 
 TI1 = np.linspace(0.01,22,100)
 Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(6,4))
 
 ax.axhline(y=0.5, linewidth=1, color='k', linestyle='--')
 for i, Q in enumerate(Q_all):
@@ -569,7 +596,7 @@ ax.set_yticks([0.0,0.25,0.5,0.75,1.0])
 ax.set_ylim(-0.01,1.01)
 ax.set_xlim((0.0,22))
 ax.legend(frameon=False, loc='upper left')
-ax.set_xlabel('TI')
+ax.set_xlabel('log($TI$)')
 ax.set_ylabel(r'Modeled P$(saturated)$')
 
 ax1 = ax.twinx()
@@ -580,62 +607,12 @@ ax1.axvspan(dfnew['TI_filtered'].min(), dfnew['TI_filtered'].max(), alpha=0.1, c
 ax1.fill_between(TI1, np.exp(logprob), alpha=0.4, color='peru')
 ax1.plot(TI1, np.exp(logprob), color='peru', linewidth=1, label='PDF')
 ax1.set_xlim((0.0,22))
-ax1.set_ylim(-0.01,0.5)
+ax1.set_ylim(-0.01,0.7)
 ax1.set_ylabel('Density')
 ax1.legend(frameon=False, loc='lower right')
+fig.tight_layout()
 plt.savefig(save_directory+f'pred_sat_ti_pdf_{site}_logTI_logQ_{res}.pdf', transparent=True)
 plt.savefig(save_directory+f'pred_sat_ti_pdf_{site}_logTI_logQ_{res}.png', transparent=True)
-
-#%% plot saturation on hillshade
-
-# hillshade
-src = rd.open(path + HSfile_res) # hillshade
-bounds = src.bounds
-Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
-
-# TI
-TI_plot = tif.read(1).astype(float)
-shp = TI_plot.shape
-TI_plot = TI_plot.flatten()
-sat_state = np.zeros_like(TI_plot)
-
-Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
-for i, Q in enumerate(Q_all):
-    pred = model.predict(exog=dict(TI_filtered=TI_plot, logQ=np.log(Q)*np.ones_like(TI_plot)))
-    sat_state += 1*(pred>0.5)
-
-#%%
-
-# sat_state = np.ma.masked_array(sat_state, mask=~basin)
-hs = src.read(1)
-hs = np.ma.masked_array(hs, mask=hs==-9999)
-
-fig, ax = plt.subplots(figsize=(10,6)) #(6,6)
-ax.imshow(hs, cmap='binary', 
-                extent=Extent, origin="upper", vmin=160)
-cmap = cm.get_cmap('Blues', 5)
-cmap.set_under('w')
-cs = ax.imshow(sat_state.values.reshape(shp), cmap=cmap, vmin=0.5,vmax=5.5, 
-                extent=Extent, 
-                origin="upper",
-                alpha=0.7,
-                interpolation=None,
-                )
-cbar = fig.colorbar(cs, ticks=[1,2,3,4,5], label='Q (mm/d)', extend='min')
-label = np.round(Q_all[::-1]*1000,2)
-cbar.ax.set_yticklabels(label) 
-ofs= 100 #50
-ax.set_xlim((Extent[0]+ofs, Extent[1]-ofs))
-ax.set_ylim((Extent[2]+ofs,Extent[3]-ofs))
-plt.axis('off')
-# plt.savefig(save_directory+f'satmap_{site}_{res}.pdf', transparent=True)
-# plt.savefig(save_directory+f'satmap_{site}_{res}.png', transparent=True)
-
-# ax.set_xlim((341200, 341500)) # DR bounds
-# ax.set_ylim((4.36490e6,4.36511e6)) # DR Bounds
-# ax.set_xlim((355100,354600)) # PB bounds
-# ax.set_ylim((4.3715e6,4.3722e6)) # PB Bounds
-
 
 #%% derive sat class from regression
 
@@ -679,7 +656,7 @@ hs = src.read(1)
 shp = TI_plot.shape
 hs = np.ma.masked_array(hs, mask=hs==-9999)
 
-fig, ax = plt.subplots(figsize=(10,6)) #(6,6)
+fig, ax = plt.subplots(figsize=(5,5)) #(9,5)
 ax.imshow(hs, cmap='binary', 
                 extent=Extent, origin="upper", vmin=160)
 im = ax.imshow(sat_class_plot.reshape(shp), 
@@ -690,6 +667,13 @@ im = ax.imshow(sat_class_plot.reshape(shp),
                         alpha=0.7,
                         interpolation="none",
                         )
+if site=='DR':
+    ax.plot([341400, 341650], [4364700, 4364700], color='k', linewidth=4)
+    ax.text(341430, 4364730, '250 m', fontsize=10)
+if site=='BR':
+    ax.plot([355000, 355500], [4370400, 4370400], color='k', linewidth=4)
+    ax.text(355100, 4370440, '500 m', fontsize=10)
+
 fig.colorbar(im, format=fmt, ticks=np.arange(0,3))
 ofs= 100 #50
 ax.set_xlim((Extent[0]+ofs, Extent[1]-ofs))
@@ -923,4 +907,55 @@ for key, group in grouped:
     T_uq = np.percentile(Tcalc, 75)
 
     T_estimates.append([T_median, T_lq, T_uq])
+
+
+#%% plot saturation on hillshade
+
+# hillshade
+src = rd.open(path + HSfile_res) # hillshade
+bounds = src.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+
+# TI
+TI_plot = tif.read(1).astype(float)
+shp = TI_plot.shape
+TI_plot = TI_plot.flatten()
+sat_state = np.zeros_like(TI_plot)
+
+Q_all = np.geomspace(dfnew['Q'].min(),dfnew['Q'].max(),5)
+for i, Q in enumerate(Q_all):
+    pred = model.predict(exog=dict(TI_filtered=TI_plot, logQ=np.log(Q)*np.ones_like(TI_plot)))
+    sat_state += 1*(pred>0.5)
+
+#%%
+
+# sat_state = np.ma.masked_array(sat_state, mask=~basin)
+hs = src.read(1)
+hs = np.ma.masked_array(hs, mask=hs==-9999)
+
+fig, ax = plt.subplots(figsize=(10,6)) #(6,6)
+ax.imshow(hs, cmap='binary', 
+                extent=Extent, origin="upper", vmin=160)
+cmap = cm.get_cmap('Blues', 5)
+cmap.set_under('w')
+cs = ax.imshow(sat_state.values.reshape(shp), cmap=cmap, vmin=0.5,vmax=5.5, 
+                extent=Extent, 
+                origin="upper",
+                alpha=0.7,
+                interpolation=None,
+                )
+cbar = fig.colorbar(cs, ticks=[1,2,3,4,5], label='Q (mm/d)', extend='min')
+label = np.round(Q_all[::-1]*1000,2)
+cbar.ax.set_yticklabels(label) 
+ofs= 100 #50
+ax.set_xlim((Extent[0]+ofs, Extent[1]-ofs))
+ax.set_ylim((Extent[2]+ofs,Extent[3]-ofs))
+plt.axis('off')
+# plt.savefig(save_directory+f'satmap_{site}_{res}.pdf', transparent=True)
+# plt.savefig(save_directory+f'satmap_{site}_{res}.png', transparent=True)
+
+# ax.set_xlim((341200, 341500)) # DR bounds
+# ax.set_ylim((4.36490e6,4.36511e6)) # DR Bounds
+# ax.set_xlim((355100,354600)) # PB bounds
+# ax.set_ylim((4.3715e6,4.3722e6)) # PB Bounds
 

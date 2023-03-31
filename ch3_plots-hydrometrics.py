@@ -11,10 +11,17 @@ from matplotlib import colors
 import dataretrieval.nwis as nwis
 from Hydrograph.hydrograph import sepBaseflow
 
-# %% load precip
 
 path_DR = "C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/DruidRun_precip_15min_2022_4-2023_1.csv"
 path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/Baisman_precip_15min_2022_4-2023_1.csv"
+
+
+#%% if you want the data already made:
+
+dfq_BR = pd.read_csv(path_BR+'df_qbp.csv')
+dfq_DR = pd.read_csv(path_DR+'dfq_qbp.csv')
+
+# %% load precip
 
 dfp_DR = pd.read_csv(path_DR)
 dfp_BR = pd.read_csv(path_BR)
@@ -35,8 +42,9 @@ site_PB = '01583570'
 dfq = nwis.get_record(sites=site_BR, service='iv', start='2022-06-01', end='2023-01-26')
 dfqug = nwis.get_record(sites=site_PB, service='iv', start='2022-06-01', end='2023-01-26')
 
-# dfq.to_csv(path+'dfq.csv')
-# dfqug.to_csv(path+'dfqug.csv')
+path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/'
+dfq.to_csv(path+'dfq.csv')
+dfqug.to_csv(path+'dfqug.csv')
 
 #%% Baisman run: process Q
 
@@ -67,6 +75,10 @@ dfq_BR = sepBaseflow(dfq_in, 15, area_BR*1e-6, k=0.000546, tp_min=4)
 
 dfq_BR = dfq_BR.merge(dfp_BR, how='inner', on='Date')
 
+path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/'
+dfq_BR.to_csv(path+'df_qbp.csv')
+
+#################### Start Here with BR dataframe already created ###########
 # %% group data to events
 
 # Peakflow volume [m^3]
@@ -166,7 +178,10 @@ dfq_DR = sepBaseflow(dfq_DR, 15, area_DR*1e-6, k=0.000546, tp_min=4)
 #%% merge precip
 
 dfq_DR = dfq_DR.merge(dfp_DR, how='inner', on='Date')
+path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/'
+dfq_DR.to_csv(path+'df_qbp.csv')
 
+#################### Start Here with DR dataframe already created ########
 # %% group data to events
 
 # Peakflow volume [m^3]
