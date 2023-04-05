@@ -242,37 +242,6 @@ fig.tight_layout()
 plt.savefig(figpath+'Cht_estar_violinplot.png')
 plt.savefig(figpath+'Cht_estar_violinplot.pdf')
 
-
-# %% 
-# calculate some statistics
-
-# method for calculating std from q1 and q3 https://stats.stackexchange.com/a/256496
-n = 10 # number of samples of piedmont in Portenga et al.
-E_std = (df_U['U'][4] - df_U['U'][1]) / (2 * norm.ppf((0.75 * n - 0.125) / (n + 0.25)))
-E_mean = df_U['U'][2]
-
-# generate normally distributed random samples for erosion
-E_gen = E_std * np.random.randn(10000) + E_mean
-
-# generate random samples for curvature by selecting with replacement
-Cht_DR_gen = np.random.choice(df_ht_DR['Cht'][cDR], 10000, replace=True)
-Cht_BR_gen = np.random.choice(df_ht_BR['Cht'][cBR], 10000, replace=True)
-
-# assume rho ratio is just one value
-rho_ratio = 2
-
-# calculate diffusivity for each combination
-D_DR = (rho_ratio * E_gen)/(-Cht_DR_gen)
-D_BR = (rho_ratio * E_gen)/(-Cht_BR_gen)
-
-# get quantiles
-q25_DR, med_DR, q75_DR = np.percentile(D_DR, [25, 50, 75])
-q25_BR, med_BR, q75_BR = np.percentile(D_BR, [25, 50, 75])
-
-df_D_stats = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]], 
-                    columns=['q25','q50','q75'], index=['DR','BR'])
-
-
 # %% plot basin
 
 # Druids Run
@@ -301,7 +270,7 @@ plt.show()
 
 # %% Chi analysis visualization
 
-conc = '0.6'
+conc = '0.5'
 
 path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
 path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
@@ -323,7 +292,7 @@ axs.set_xlabel(r'$\chi$ (m)')
 axs.set_ylabel('Elevation (m)')
 axs.set_title('Druids Run: m/n=%s'%conc)
 fig.colorbar(sc, label=r'log10 $k_{sn}$')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_DR_%s.png'%conc)
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_DR_%s.png'%conc)
 
 fig, axs = plt.subplots()
 sc = axs.scatter(df_chi_BR['chi'], df_chi_BR['elevation'], c=df_chi_BR['m_chi'], s=3)
@@ -331,7 +300,36 @@ axs.set_xlabel(r'$\chi$ (m)')
 axs.set_ylabel('Elevation')
 axs.set_title('Baisman Run: m/n=%s'%conc)
 fig.colorbar(sc, label=r'log10 $k_{sn}$')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_BR_%s.png'%conc)
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_BR_%s.png'%conc)
+
+#%%
+
+Quant_DR = np.quantile(df_chi_DR['drainage_area'], 0.4)
+Quant_BR = np.quantile(df_chi_BR['drainage_area'], 0.4)
+sel_DR = df_chi_DR['drainage_area']>Quant_DR
+sel_BR = df_chi_BR['drainage_area']>Quant_BR
+
+
+df_chi_DR1 = df_chi_DR.loc[df_chi_DR['drainage_area']>Quant_DR]
+df_chi_BR1 = df_chi_BR.loc[df_chi_BR['drainage_area']>Quant_BR]
+
+fig, axs = plt.subplots()
+sc = axs.scatter(df_chi_DR1['chi'], df_chi_DR1['elevation'], c=df_chi_DR1['m_chi'], s=3, zorder=99)
+axs.scatter(df_chi_DR['chi'], df_chi_DR['elevation'], c='0.8', s=3, zorder=90)
+axs.set_xlabel(r'$\chi$ (m)')
+axs.set_ylabel('Elevation (m)')
+axs.set_title('Druids Run: m/n=%s'%conc)
+fig.colorbar(sc, label=r'log10 $k_{sn}$')
+
+
+fig, axs = plt.subplots()
+sc = axs.scatter(df_chi_BR1['chi'], df_chi_BR1['elevation'], c=df_chi_BR1['m_chi'], s=3, zorder=99)
+axs.scatter(df_chi_BR['chi'], df_chi_BR['elevation'], c='0.8', s=3, zorder=90)
+axs.set_xlabel(r'$\chi$ (m)')
+axs.set_ylabel('Elevation')
+axs.set_title('Baisman Run: m/n=%s'%conc)
+fig.colorbar(sc, label=r'log10 $k_{sn}$')
+
 
 #%% flow distance-elevation plots 
 

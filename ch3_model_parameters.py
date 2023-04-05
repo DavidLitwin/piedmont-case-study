@@ -84,6 +84,12 @@ cDR = df_ht_DR['Cht'] > -1
 Cht_DR_gen = np.random.choice(df_ht_DR['Cht'][cDR], 10000, replace=True)
 Cht_BR_gen = np.random.choice(df_ht_BR['Cht'][cBR], 10000, replace=True)
 
+q25_C_DR, med_C_DR, q75_C_DR = np.percentile(df_ht_DR['Cht'][cDR], [25, 50, 75])
+q25_C_BR, med_C_BR, q75_C_BR = np.percentile(df_ht_BR['Cht'][cBR], [25, 50, 75])
+
+df_Cht = pd.DataFrame(data=[[q25_C_DR, med_C_DR, q75_C_DR], [q25_C_BR, med_C_BR, q75_C_BR]], 
+                    columns=['q25','q50','q75'], index=['DR','BR'])
+
 # assume rho ratio is just one value
 rho_ratio = 2
 
@@ -107,16 +113,46 @@ df_params['D'] =  df_D['q50'] #df_D['q50'].mean()
 D_Stat = ranksums(D_DR, D_BR)
 
 
-#%% violin plot D
+#%% violin plot Cht and D
+
+# pos   = [1, 2]
+# label = ['Druids Run', 'Baisman Run']
+# clrs = ['firebrick', 'royalblue']
+
+# D = [np.log10(D_DR*(3600*24*365)), np.log10(D_BR*(3600*24*365))]
+
+# fig, ax = plt.subplots(figsize=(4,5))
+# parts = ax.violinplot(D, pos, vert=True, showmeans=False, showmedians=True,
+#         showextrema=True)
+# for pc, color in zip(parts['bodies'], clrs):
+#     pc.set_facecolor(color)
+#     pc.set_alpha(0.8)
+# for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+#     vp = parts[partname]
+#     vp.set_edgecolor("k")
+#     vp.set_linewidth(1)
+# ax.vlines(pos, np.log10(np.array([q25_DR, q25_BR])*(3600*24*365)), 
+#           np.log10(np.array([q75_DR, q75_BR])*(3600*24*365)), color='k', linestyle='-', lw=5)
+# # ax.set_ylim((-10,-2))
+# ax.set_xticks(pos)
+# ax.set_xticklabels(label)
+# ax.set_ylabel(r'$\log_{10}(D \,\, (m^2/yr))$')
+# ax.set_title('Hillslope Diffusivity')
+
+# plt.show()
+# fig.tight_layout()
+# plt.savefig(figpath + 'D_violinplot.png', dpi=300)
+
+
 
 pos   = [1, 2]
 label = ['Druids Run', 'Baisman Run']
 clrs = ['firebrick', 'royalblue']
-
+Cht = [np.log10(-df_ht_DR['Cht'][cDR]), np.log10(-df_ht_BR['Cht'][cBR])]
 D = [np.log10(D_DR*(3600*24*365)), np.log10(D_BR*(3600*24*365))]
 
-fig, ax = plt.subplots(figsize=(4,5))
-parts = ax.violinplot(D, pos, vert=True, showmeans=False, showmedians=True,
+fig, axs = plt.subplots(ncols=2, figsize=(5,3.5))
+parts = axs[0].violinplot(Cht, pos, vert=True, showmeans=False, showmedians=True,
         showextrema=True)
 for pc, color in zip(parts['bodies'], clrs):
     pc.set_facecolor(color)
@@ -125,17 +161,39 @@ for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
     vp = parts[partname]
     vp.set_edgecolor("k")
     vp.set_linewidth(1)
-ax.vlines(pos, np.log10(np.array([q25_DR, q25_BR])*(3600*24*365)), 
-          np.log10(np.array([q75_DR, q75_BR])*(3600*24*365)), color='k', linestyle='-', lw=5)
-# ax.set_ylim((-10,-2))
-ax.set_xticks(pos)
-ax.set_xticklabels(label)
-ax.set_ylabel(r'$\log_{10}(D \,\, (m^2/yr))$')
-ax.set_title('Hillslope Diffusivity')
+DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['Cht'][cDR], [25, 50, 75])
+BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Cht'][cBR], [25, 50, 75])
+dfCht = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Cht'][cDR].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Cht'][cBR].mean()]], 
+                    columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+dfCht.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Cht_stats.csv', float_format="%.3e")
+axs[0].vlines(pos, np.log10(-np.array([DRq1, BRq1])), np.log10(-np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
+axs[0].set_ylim((-8,0))
+axs[0].set_xticks(pos)
+axs[0].set_xticklabels(label)
+axs[0].set_ylabel(r'$log_{10} (-C_{ht})$ (1/m)')
+axs[0].set_title('Hilltop Curvature')
 
+parts = axs[1].violinplot(D, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+DRq1, med_DR, DRq3 = np.percentile(D_DR*(3600*24*365), [25, 50, 75])
+BRq1, med_BR, BRq3 = np.percentile(D_BR*(3600*24*365), [25, 50, 75])
+axs[1].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
+axs[1].set_ylim((-6,3))
+axs[1].set_xticks(pos)
+axs[1].set_xticklabels(label)
+axs[1].set_ylabel(r'$\log_{10}(D \,\, (m^2/yr))$')
+axs[1].set_title('Hillslope Diffusivity')
 plt.show()
 fig.tight_layout()
-plt.savefig(figpath + 'D_violinplot.png', dpi=300)
+plt.savefig(figpath+'Cht_D_violinplot.png', dpi=300, transparent=True)
+plt.savefig(figpath+'Cht_D_violinplot.pdf', transparent=True)
 
 
 # %% K, m, n: streampower coefficients
@@ -158,11 +216,11 @@ df_params['Qstar_max'] = [0.3,0.3] #0.6,0.3
 
 # choose steepness index of the segments with larger drainage areas, because 
 # this avoids headwaters where there should be more dependence on Q*
-Quant_DR = np.quantile(df_chi_DR['drainage_area'], 0.8)
-Quant_BR = np.quantile(df_chi_BR['drainage_area'], 0.8)
+Quant_DR = np.quantile(df_chi_DR['drainage_area'], 0.4)
+Quant_BR = np.quantile(df_chi_BR['drainage_area'], 0.4)
 
 ksn_DR = df_chi_DR['m_chi'].loc[df_chi_DR['drainage_area']>Quant_DR]
-ksn_BR = df_chi_BR['m_chi'].loc[df_chi_BR['drainage_area']<Quant_BR]
+ksn_BR = df_chi_BR['m_chi'].loc[df_chi_BR['drainage_area']>Quant_BR]
 ksn_DR_gen = np.random.choice(ksn_DR, 10000, replace=True)
 ksn_BR_gen = np.random.choice(ksn_BR, 10000, replace=True)
 
@@ -197,10 +255,12 @@ pos   = [1, 2]
 label = ['Druids Run', 'Baisman Run']
 clrs = ['firebrick', 'royalblue']
 
-Ksp = [np.log10(Ksp_DR*(3600*24*365)), np.log10(Ksp_BR*(3600*24*365))]
+K = [np.log10(Ksp_DR*(3600*24*365)), np.log10(Ksp_BR*(3600*24*365))]
+q25_DR, med_DR, q75_DR = np.percentile(Ksp_DR, [25, 50, 75])
+q25_BR, med_BR, q75_BR = np.percentile(Ksp_BR, [25, 50, 75])
 
 fig, ax = plt.subplots(figsize=(4,5))
-parts = ax.violinplot(Ksp, pos, vert=True, showmeans=False, showmedians=True,
+parts = ax.violinplot(K, pos, vert=True, showmeans=False, showmedians=True,
         showextrema=True)
 for pc, color in zip(parts['bodies'], clrs):
     pc.set_facecolor(color)
@@ -219,7 +279,39 @@ ax.set_title('Total Erodibility')
 
 plt.show()
 fig.tight_layout()
-plt.savefig(figpath + 'Ksp_violinplot.png', dpi=300)
+# plt.savefig(figpath + 'Ksp_violinplot.png', dpi=300)
+
+
+#%% Violin plot - erodibility K
+
+pos   = [1, 2]
+label = ['Druids Run', 'Baisman Run']
+clrs = ['firebrick', 'royalblue']
+
+K = [np.log10(Ksp_DR*(3600*24*365)), np.log10(Ksp_BR*(3600*24*365))]
+
+fig, ax = plt.subplots(figsize=(4,5))
+parts = ax.violinplot(K, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+ax.vlines(pos, np.log10(np.array([q25_DR, q25_BR])*(3600*24*365)), 
+          np.log10(np.array([q75_DR, q75_BR])*(3600*24*365)), color='k', linestyle='-', lw=5)
+ax.set_ylim((-10,-2))
+ax.set_xticks(pos)
+ax.set_xticklabels(label)
+ax.set_ylabel(r'$\log_{10}(K_{sp} \,\, (1/yr))$')
+ax.set_title('Total Erodibility')
+
+plt.show()
+fig.tight_layout()
+plt.savefig(figpath + 'K_violinplot.png', dpi=300)
+
 
 
 #%%

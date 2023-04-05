@@ -17,7 +17,7 @@ save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_deli
 
 #%%
 
-site = 'DR'
+site = 'BR'
 res = 5
 
 if site=='DR' and res>=1:
@@ -412,8 +412,8 @@ in_sample = pd.DataFrame({'prob':model.predict()})
 #%% calculate transmissivity: range of thresholds
 
 N = 1000
-p_all = np.linspace(0.2,0.7,N)
-# p_all = np.linspace(0.05,0.7,N)
+# p_all = np.linspace(0.2,0.7,N) #DR
+p_all = np.linspace(0.05,0.7,N) #BR
 rhostar = lambda p: np.log(p/(1-p))
 Tmean = lambda b0, b1, p: np.exp((rhostar(p)-b0)/b1)
 
@@ -439,32 +439,45 @@ for i, p in enumerate(p_all):
     sens[i] = cs[1][1]/(cs[1][1] + cs[1][0])
     spec[i] = cs[0][0]/(cs[0][0] + cs[0][1])
 
-    dist[i] = abs(sens[i]-(1-spec[i]))/np.sqrt(2)
+    dist[i] = abs(sens[i]-(1-spec[i]))
 
+#%%
 
-fig, ax = plt.subplots()
-sc = ax.scatter(1-spec, sens, c=p_all)
-ax.axline([0,0], [1,1])
-ax.set_xlabel('False Positive Ratio')
-ax.set_ylabel('True Positive Ratio')
-fig.colorbar(sc, label='threshold')
-# plt.savefig(save_directory+'FPR_TPR_thresh_%s.png'%site)
+s1 = 8
+s2 = (5,4)
 
-fig, ax = plt.subplots()
-sc = ax.scatter(1-spec, sens, c=T_all[:,0], cmap='plasma', norm=colors.LogNorm())
-ax.axline([0,0], [1,1])
-ax.set_xlabel('False Positive Ratio')
-ax.set_ylabel('True Positive Ratio')
+fig, ax = plt.subplots(figsize=s2)
+sc = ax.scatter(1-spec, sens, c=p_all, s=s1, vmin=0.0, vmax=0.7)
+ax.axline([0,0], [1,1], color='k', linestyle='--', label='1:1')
+ax.set_xlabel('False Positive Ratio (FPR)')
+ax.set_ylabel('True Positive Ratio (TPR)')
+fig.colorbar(sc, label=r'$p^*$')
+ax.legend(frameon=False)
+fig.tight_layout()
+plt.savefig(save_directory+'FPR_TPR_thresh_%s.png'%site, dpi=300, transparent=True)
+plt.savefig(save_directory+'FPR_TPR_thresh_%s.pdf'%site, transparent=True)
+
+fig, ax = plt.subplots(figsize=s2)
+sc = ax.scatter(1-spec, sens, c=T_all[:,0], s=s1, cmap='plasma', norm=colors.LogNorm())
+ax.axline([0,0], [1,1], color='k', linestyle='--', label='1:1')
+ax.set_xlabel('False Positive Ratio (FPR)')
+ax.set_ylabel('True Positive Ratio (TPR)')
 fig.colorbar(sc, label='Transmissivity')
-# plt.savefig(save_directory+'FPR_TPR_trans_%s.png'%site)
+ax.legend(frameon=False)
+fig.tight_layout()
+plt.savefig(save_directory+'FPR_TPR_trans_%s.png'%site, dpi=300, transparent=True)
+plt.savefig(save_directory+'FPR_TPR_trans_%s.pdf'%site, transparent=True)
 
-fig, ax = plt.subplots()
-sc = ax.scatter(T_all[:,0], dist, c=p_all)
+fig, ax = plt.subplots(figsize=s2)
+sc = ax.scatter(T_all[:,0], dist, c=p_all, s=s1, vmin=0.0, vmax=0.7)
+# ax.plot(T_all[:,0], dist, 'k', linewidth=0.5, zorder=100)
 ax.set_xscale('log')
 ax.set_xlabel('Transmissivity')
-ax.set_ylabel('Distance from FPR-TPR 1:1')
-fig.colorbar(sc, label='Threshold')
-# plt.savefig(save_directory+'trans_dist_thresh_%s.png'%site)
+ax.set_ylabel('TPR-FPR')
+fig.colorbar(sc, label=r'$p^*$')
+fig.tight_layout()
+plt.savefig(save_directory+'trans_dist_thresh_%s.png'%site, dpi=300, transparent=True)
+plt.savefig(save_directory+'trans_dist_thresh_%s.pdf'%site, transparent=True)
 
 #%% select max and save
 
@@ -477,10 +490,11 @@ dfT = pd.DataFrame({'Trans. med [m2/d]':T_select[0],
               'b0':means[0],
               'b1':means[1],
               'thresh':p_all[i],
+              'rho':rhostar(p_all[i]),
               'dist':dist[i]},
               index=[0]
               )
-dfT.to_csv(save_directory+f'transmissivity_{site}_logTIQ_{res}.csv')
+dfT.to_csv(save_directory+f'transmissivity_{site}_logTIQ_{res}.csv', float_format='%.3f')
 
 
 #%% Predict out of sample, and plot with TI CDF
