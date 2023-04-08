@@ -651,6 +651,14 @@ x = np.digitize(TI_plot, TI_range)
 x[x==500] = 499
 sat_class_plot = sat_class[x]
 
+#%%
+vals, counts = np.unique(sat_class_plot[basin], return_counts=True)
+
+dfsat = pd.DataFrame(data=counts/len(sat_class_plot[basin]), 
+                    index=['sat_never','sat_variable', 'sat_always'])
+dfsat.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_sat_%s.csv'%site)
+
+
 #%% plot classified saturated areas
 
 # colorbar approach courtesy of https://stackoverflow.com/a/53361072/11627361, https://stackoverflow.com/a/60870122/11627361, 
