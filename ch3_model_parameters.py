@@ -115,36 +115,6 @@ D_Stat = ranksums(D_DR, D_BR)
 
 #%% violin plot Cht and D
 
-# pos   = [1, 2]
-# label = ['Druids Run', 'Baisman Run']
-# clrs = ['firebrick', 'royalblue']
-
-# D = [np.log10(D_DR*(3600*24*365)), np.log10(D_BR*(3600*24*365))]
-
-# fig, ax = plt.subplots(figsize=(4,5))
-# parts = ax.violinplot(D, pos, vert=True, showmeans=False, showmedians=True,
-#         showextrema=True)
-# for pc, color in zip(parts['bodies'], clrs):
-#     pc.set_facecolor(color)
-#     pc.set_alpha(0.8)
-# for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
-#     vp = parts[partname]
-#     vp.set_edgecolor("k")
-#     vp.set_linewidth(1)
-# ax.vlines(pos, np.log10(np.array([q25_DR, q25_BR])*(3600*24*365)), 
-#           np.log10(np.array([q75_DR, q75_BR])*(3600*24*365)), color='k', linestyle='-', lw=5)
-# # ax.set_ylim((-10,-2))
-# ax.set_xticks(pos)
-# ax.set_xticklabels(label)
-# ax.set_ylabel(r'$\log_{10}(D \,\, (m^2/yr))$')
-# ax.set_title('Hillslope Diffusivity')
-
-# plt.show()
-# fig.tight_layout()
-# plt.savefig(figpath + 'D_violinplot.png', dpi=300)
-
-
-
 pos   = [1, 2]
 label = ['Druids Run', 'Baisman Run']
 clrs = ['firebrick', 'royalblue']
@@ -245,9 +215,13 @@ q25_BR, med_BR, q75_BR = np.percentile(Ksp_BR, [25, 50, 75])
 df_Ksp = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]], 
                     columns=['q25','q50','q75'], index=['DR','BR'])
 
-#%%
-
+# calculate statistic
 Ksp_Stat = ranksums(Ksp_DR, Ksp_BR)
+
+# add to dataframe and apply Qstar_max
+df_params['Ksp'] = df_Ksp['q50']
+df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
+df_params['v0'] = 30 #10 # window we averaged DEMs over to calculate most quantities
 
 #%% Violin plot - total erodibility
 
@@ -282,16 +256,20 @@ fig.tight_layout()
 # plt.savefig(figpath + 'Ksp_violinplot.png', dpi=300)
 
 
-#%% Violin plot - erodibility K
+#%% Violin plot - steepness ksn and erodibility K
 
 pos   = [1, 2]
 label = ['Druids Run', 'Baisman Run']
 clrs = ['firebrick', 'royalblue']
 
-K = [np.log10(Ksp_DR*(3600*24*365)), np.log10(Ksp_BR*(3600*24*365))]
+Qm = df_params['Qstar_max'].values #[0.6,0.3] # 
+K = [np.log10(Ksp_DR*(3600*24*365)/Qm[0]), np.log10(Ksp_BR*(3600*24*365)/Qm[1])]
+ksn = [np.log10(ksn_DR), np.log10(ksn_BR)]
+# ksn = [ksn_DR, ksn_BR]
 
-fig, ax = plt.subplots(figsize=(4,5))
-parts = ax.violinplot(K, pos, vert=True, showmeans=False, showmedians=True,
+
+fig, axs = plt.subplots(ncols=2, figsize=(6,3.5))
+parts = axs[0].violinplot(ksn, pos, vert=True, showmeans=False, showmedians=True,
         showextrema=True)
 for pc, color in zip(parts['bodies'], clrs):
     pc.set_facecolor(color)
@@ -300,35 +278,43 @@ for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
     vp = parts[partname]
     vp.set_edgecolor("k")
     vp.set_linewidth(1)
-ax.vlines(pos, np.log10(np.array([q25_DR, q25_BR])*(3600*24*365)), 
-          np.log10(np.array([q75_DR, q75_BR])*(3600*24*365)), color='k', linestyle='-', lw=5)
-ax.set_ylim((-10,-2))
-ax.set_xticks(pos)
-ax.set_xticklabels(label)
-ax.set_ylabel(r'$\log_{10}(K_{sp} \,\, (1/yr))$')
-ax.set_title('Total Erodibility')
+DRq1, DRmed, DRq3 = np.percentile(ksn_DR, [25, 50, 75])
+BRq1, BRmed, BRq3 = np.percentile(ksn_BR, [25, 50, 75])
+dfksn = pd.DataFrame(data=[[DRq1, DRmed, DRq3, ksn_DR.mean()], [BRq1, BRmed, BRq3, ksn_BR.mean()]], 
+                    columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+dfksn.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_ksn_stats.csv')
+axs[0].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
+# axs[0].vlines(pos, np.array([DRq1, BRq1]), np.array([DRq3, BRq3]), color='k', linestyle='-', lw=5)
+# axs[0].set_ylim((-8,0))
+axs[0].set_xticks(pos)
+axs[0].set_xticklabels(label)
+axs[0].set_ylabel(r'$log_{10} (k_{sn})$ (-)')
+axs[0].set_title('Steepness index')
 
+parts = axs[1].violinplot(K, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+DRq1, DRmed, DRq3 = np.percentile(Ksp_DR*(3600*24*365)/Qm[0], [25, 50, 75])
+BRq1, BRmed, BRq3 = np.percentile(Ksp_BR*(3600*24*365)/Qm[1], [25, 50, 75])
+dfK = pd.DataFrame(data=[[DRq1, DRmed, DRq3], [BRq1, BRmed, BRq3]], 
+                    columns=['q25','q50','q75'], index=['DR','BR'])
+dfK.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_K_stats.csv')
+axs[1].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
+axs[1].set_ylim((-9.5,-3))
+axs[1].set_xticks(pos)
+axs[1].set_xticklabels(label)
+axs[1].set_ylabel(r'$\log_{10}(K)$ (1/yr)')
+axs[1].set_title('Incision coefficient')
 plt.show()
 fig.tight_layout()
-plt.savefig(figpath + 'K_violinplot.png', dpi=300)
-
-
-
-#%%
-df_params['Ksp'] = df_Ksp['q50']
-df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
-
-df_params['v0'] = 30 #10 # window we averaged DEMs over to calculate most quantities
-
-# plt.figure()
-# df_chi_BR['m_chi'].plot.density(color='r', label='Baisman')
-# df_chi_DR['m_chi'].plot.density(color='b', label='Druids')
-# plt.axvline(df_chi_BR['m_chi'].median(), color='r')
-# plt.axvline(df_chi_DR['m_chi'].median(), color='b')
-# plt.axvline(ksn_BR, color='r', linestyle='--')
-# plt.axvline(ksn_DR, color='b', linestyle='--')
-# plt.xlabel('$k_{sn}$')
-# plt.legend(frameon=False)
+plt.savefig(figpath + 'ksn_K_violinplot.png', dpi=300, transparent=True)
+plt.savefig(figpath + 'ksn_K_violinplot.pdf', transparent=True)
 
 # %% precipitation
 
@@ -558,7 +544,7 @@ df_params.drop(columns=['label'], inplace=True)
 #%%
 
 folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
-N = 18
+N = 21
 
 
 for i in df_params.index:

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.colors import LightSource
 from landlab.io.netcdf import from_netcdf
-plt.rc('text', usetex=True)
+# plt.rc('text', usetex=True)
 
 from generate_colormap import get_continuous_cmap
 
@@ -162,6 +162,53 @@ plt.subplots_adjust(left=0.15, right=0.8, wspace=0.05, hspace=0.05)
 cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7]) #Left, Bottom, Width, Height
 fig.colorbar(im, cax=cbar_ax, format=fmt, ticks=np.arange(0,3))
 plt.savefig('%s/%s/sat_zones_%s.png'%(directory, base_output_path, base_output_path), dpi=300)
+
+
+#%% sat class compare
+
+# load predicted saturation from script
+path = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/'
+DR_name, BR_name = 'df_sat_DR.csv', 'df_sat_BR.csv'
+
+df_1 = pd.read_csv(path+DR_name, names=['class', 'DR'], header=0, index_col='class').T
+df_2 = pd.read_csv(path+BR_name, names=['class', 'BR'], header=0, index_col='class').T
+
+df_3 = df_results[['sat_never', 'sat_variable', 'sat_always']].iloc[[0,1]]
+df_3['index'] = ['Modeled DR', 'Modeled BR']
+df_3.set_index('index', inplace=True)
+
+df_satall = pd.concat([df_1, df_2, df_3], axis=0)
+df_satall = df_satall.reindex(['DR', 'Modeled DR', 'BR', 'Modeled BR'])
+
+# make figure
+fig, ax = plt.subplots(figsize=(5,3.5))
+bottom = np.zeros(4)
+width=0.5 
+
+color_dict = {'sat_never':"peru", 'sat_variable':"dodgerblue", 'sat_always':"navy"}
+
+for col in df_satall.columns:
+    p = ax.bar(df_satall.index, 
+               df_satall[col].values, 
+               width, 
+               label=col.split('_')[-1], 
+               bottom=bottom,
+               color=color_dict[col],
+               )
+    bottom += df_satall[col].values
+ax.set_ylim((0,1))
+ax.set_ylabel('Fractional Area')
+# fig.legend(loc='outside center right', frameon=False)
+box = ax.get_position()
+ax.set_position([box.x0, box.y0, box.width * 0.85, box.height])
+ax.legend(bbox_to_anchor=(1.0, 0.6),
+          bbox_transform=fig.transFigure,
+          frameon=False, 
+          )
+ax.spines[['right', 'top']].set_visible(False)
+plt.show()
+plt.savefig('%s/%s/sat_compare_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/sat_compare_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 # %%
 

@@ -98,12 +98,12 @@ df_params['Qstar_max'] = 0.3
 
 # choose steepness index of the segments with larger drainage areas, because 
 # this avoids headwaters where there should be more dependence on Q*
-Quant_BR = np.quantile(df_chi_BR['drainage_area'], 0.8)
-Quant_DR = np.quantile(df_chi_DR['drainage_area'], 0.8)
+Quant_BR = np.quantile(df_chi_BR['drainage_area'], 0.4)
+Quant_DR = np.quantile(df_chi_DR['drainage_area'], 0.4)
 
 # use median to decrease the effect of some anomalous reaches associated with
 # lithological difference or possibly transience
-ksn_BR = df_chi_BR['m_chi'].loc[df_chi_BR['drainage_area']<Quant_BR].median()
+ksn_BR = df_chi_BR['m_chi'].loc[df_chi_BR['drainage_area']>Quant_BR].median()
 ksn_DR = df_chi_DR['m_chi'].loc[df_chi_DR['drainage_area']>Quant_DR].median()
 df_params['ksn'] = ksn_BR
 

@@ -284,25 +284,7 @@ name_chi_BR = "baltimore2015_BR_%s_MChiSegmented.csv"%conc
 df_chi_DR = pd.read_csv(path1 + name_chi_DR)
 df_chi_BR = pd.read_csv(path2 + name_chi_BR)
 
-# %% Chi-elevation plots
-
-fig, axs = plt.subplots()
-sc = axs.scatter(df_chi_DR['chi'], df_chi_DR['elevation'], c=df_chi_DR['m_chi'], s=3)
-axs.set_xlabel(r'$\chi$ (m)')
-axs.set_ylabel('Elevation (m)')
-axs.set_title('Druids Run: m/n=%s'%conc)
-fig.colorbar(sc, label=r'log10 $k_{sn}$')
-# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_DR_%s.png'%conc)
-
-fig, axs = plt.subplots()
-sc = axs.scatter(df_chi_BR['chi'], df_chi_BR['elevation'], c=df_chi_BR['m_chi'], s=3)
-axs.set_xlabel(r'$\chi$ (m)')
-axs.set_ylabel('Elevation')
-axs.set_title('Baisman Run: m/n=%s'%conc)
-fig.colorbar(sc, label=r'log10 $k_{sn}$')
-# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_BR_%s.png'%conc)
-
-#%%
+#%% chi-elevation for drainage area larger than threshold
 
 Quant_DR = np.quantile(df_chi_DR['drainage_area'], 0.4)
 Quant_BR = np.quantile(df_chi_BR['drainage_area'], 0.4)
@@ -313,22 +295,23 @@ sel_BR = df_chi_BR['drainage_area']>Quant_BR
 df_chi_DR1 = df_chi_DR.loc[df_chi_DR['drainage_area']>Quant_DR]
 df_chi_BR1 = df_chi_BR.loc[df_chi_BR['drainage_area']>Quant_BR]
 
-fig, axs = plt.subplots()
-sc = axs.scatter(df_chi_DR1['chi'], df_chi_DR1['elevation'], c=df_chi_DR1['m_chi'], s=3, zorder=99)
-axs.scatter(df_chi_DR['chi'], df_chi_DR['elevation'], c='0.8', s=3, zorder=90)
-axs.set_xlabel(r'$\chi$ (m)')
-axs.set_ylabel('Elevation (m)')
-axs.set_title('Druids Run: m/n=%s'%conc)
-fig.colorbar(sc, label=r'log10 $k_{sn}$')
+fig, axs = plt.subplots(ncols=2, figsize=(7,3.5))
+sc = axs[0].scatter(df_chi_DR1['chi'], df_chi_DR1['elevation'], c=df_chi_DR1['m_chi'], s=3, zorder=99)
+axs[0].scatter(df_chi_DR['chi'], df_chi_DR['elevation'], c='0.8', s=3, zorder=90)
+axs[0].set_xlabel(r'$\chi$ (m)')
+axs[0].set_ylabel('Elevation (m)')
+axs[0].set_title('Druids Run')
+plt.colorbar(sc, label=r'log$_{10}$( $k_{sn}$)', ax=axs[0])
 
-
-fig, axs = plt.subplots()
-sc = axs.scatter(df_chi_BR1['chi'], df_chi_BR1['elevation'], c=df_chi_BR1['m_chi'], s=3, zorder=99)
-axs.scatter(df_chi_BR['chi'], df_chi_BR['elevation'], c='0.8', s=3, zorder=90)
-axs.set_xlabel(r'$\chi$ (m)')
-axs.set_ylabel('Elevation')
-axs.set_title('Baisman Run: m/n=%s'%conc)
-fig.colorbar(sc, label=r'log10 $k_{sn}$')
+sc = axs[1].scatter(df_chi_BR1['chi'], df_chi_BR1['elevation'], c=df_chi_BR1['m_chi'], s=3, zorder=99)
+axs[1].scatter(df_chi_BR['chi'], df_chi_BR['elevation'], c='0.8', s=3, zorder=90)
+axs[1].set_xlabel(r'$\chi$ (m)')
+axs[1].set_ylabel('Elevation (m)')
+axs[1].set_title('Baisman Run')
+plt.colorbar(sc, label=r'log$_{10}$( $k_{sn}$)', ax=axs[1])
+plt.tight_layout()
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_BR_DR_%s.png'%conc, dpi=300, transparent=True)
+plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_BR_DR_%s.pdf'%conc, transparent=True)
 
 
 #%% flow distance-elevation plots 
@@ -349,8 +332,6 @@ axs.set_title('Baisman Run')
 fig.colorbar(sc, label=r'log10 $k_{sn}$')
 # plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/flow_length_BR.png')
 
-# %%
-
 plt.figure()
 df_chi_BR['m_chi'].plot.density(color='r', label='Baisman')
 df_chi_DR['m_chi'].plot.density(color='b', label='Druids')
@@ -359,20 +340,31 @@ plt.legend(frameon=False)
 plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/ksn_segment_distr.png')
 
 
-#%%
 plt.figure()
 df_chi_BR['drainage_area'].plot.cdf(color='r', label='Baisman')
 df_chi_DR['drainage_area'].plot.density(color='b', label='Druids')
 # plt.xlabel('log10 $k_{sn}$')
 plt.legend(frameon=False)
 
+# %% Chi-elevation plots
 
-Q75_BR = np.quantile(df_chi_BR['drainage_area'], 0.75)
-Q75_DR = np.quantile(df_chi_DR['drainage_area'], 0.75)
+fig, axs = plt.subplots()
+sc = axs.scatter(df_chi_DR['chi'], df_chi_DR['elevation'], c=df_chi_DR['m_chi'], s=3)
+axs.set_xlabel(r'$\chi$ (m)')
+axs.set_ylabel('Elevation (m)')
+axs.set_title('Druids Run: m/n=%s'%conc)
+fig.colorbar(sc, label=r'log10 $k_{sn}$')
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_DR_%s.png'%conc)
 
+fig, axs = plt.subplots()
+sc = axs.scatter(df_chi_BR['chi'], df_chi_BR['elevation'], c=df_chi_BR['m_chi'], s=3)
+axs.set_xlabel(r'$\chi$ (m)')
+axs.set_ylabel('Elevation')
+axs.set_title('Baisman Run: m/n=%s'%conc)
+fig.colorbar(sc, label=r'log10 $k_{sn}$')
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_BR_%s.png'%conc)
 
 # %% map Ksn
-
 
 # path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
 # name = 'baltimore2015_DR1_hs.bil' # hillshade
