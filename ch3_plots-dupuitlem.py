@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import copy
 import linecache
+import rasterio as rd
+import cartopy.crs as ccrs
 
 from matplotlib import cm, colors, ticker
 import matplotlib.pyplot as plt
@@ -16,9 +18,8 @@ from landlab.io.netcdf import from_netcdf
 
 from generate_colormap import get_continuous_cmap
 
-
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
-base_output_path = 'CaseStudy_18'
+base_output_path = 'CaseStudy_21'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2
@@ -108,7 +109,9 @@ for i in plot_runs:
 axs[-1, 0].set_ylabel(r'$y$ (m)')
 axs[-1, 0].set_xlabel(r'$x$ (m)')
 # plt.subplots_adjust(left=0.15, bottom=0.15, right=None, top=None, wspace=0.15, hspace=0.15)
-plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300)
+plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+
 
 #%% Saturation class
 
@@ -161,7 +164,8 @@ for i in plot_runs:
 plt.subplots_adjust(left=0.15, right=0.8, wspace=0.05, hspace=0.05)
 cbar_ax = fig.add_axes([0.85, 0.15, 0.02, 0.7]) #Left, Bottom, Width, Height
 fig.colorbar(im, cax=cbar_ax, format=fmt, ticks=np.arange(0,3))
-plt.savefig('%s/%s/sat_zones_%s.png'%(directory, base_output_path, base_output_path), dpi=300)
+plt.savefig('%s/%s/sat_zones_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/sat_zones_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% sat class compare
@@ -170,19 +174,19 @@ plt.savefig('%s/%s/sat_zones_%s.png'%(directory, base_output_path, base_output_p
 path = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/'
 DR_name, BR_name = 'df_sat_DR.csv', 'df_sat_BR.csv'
 
-df_1 = pd.read_csv(path+DR_name, names=['class', 'DR'], header=0, index_col='class').T
-df_2 = pd.read_csv(path+BR_name, names=['class', 'BR'], header=0, index_col='class').T
+df_1 = pd.read_csv(path+DR_name, names=['class', 'Druids Run'], header=0, index_col='class').T
+df_2 = pd.read_csv(path+BR_name, names=['class', 'Baisman Run'], header=0, index_col='class').T
 
-df_3 = df_results[['sat_never', 'sat_variable', 'sat_always']].iloc[[0,1]]
-df_3['index'] = ['Modeled DR', 'Modeled BR']
+df_3 = df_results[['sat_never', 'sat_variable', 'sat_always']]
+df_3['index'] = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR']
 df_3.set_index('index', inplace=True)
 
 df_satall = pd.concat([df_1, df_2, df_3], axis=0)
-df_satall = df_satall.reindex(['DR', 'Modeled DR', 'BR', 'Modeled BR'])
+df_satall = df_satall.reindex(['Druids Run', 'Baisman Run', 'DR-DR', 'DR-BR', 'BR-BR', 'BR-DR'])
 
 # make figure
-fig, ax = plt.subplots(figsize=(5,3.5))
-bottom = np.zeros(4)
+fig, ax = plt.subplots(figsize=(5,4))
+bottom = np.zeros(6)
 width=0.5 
 
 color_dict = {'sat_never':"peru", 'sat_variable':"dodgerblue", 'sat_always':"navy"}
@@ -206,9 +210,241 @@ ax.legend(bbox_to_anchor=(1.0, 0.6),
           frameon=False, 
           )
 ax.spines[['right', 'top']].set_visible(False)
+ax.tick_params(rotation=45)
+plt.tight_layout()
 plt.show()
 plt.savefig('%s/%s/sat_compare_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
 plt.savefig('%s/%s/sat_compare_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+
+
+#%% Channels and Hillslopes on hillshade (projected coordinate method)
+
+i = 0
+path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
+name = '%s-%d_hs.bil'%(base_output_path, i) # hillshade
+name_ch = "%s-%d_AT_CN.csv"%(base_output_path, i)  # channels
+name_hds = "%s-%d_ATsources.csv"%(base_output_path, i) # channel heads
+name_rge = "%s-%d_RidgeData.csv"%(base_output_path, i) # ridges
+
+src = rd.open(path + name) # hillshade
+df = pd.read_csv(path + name_ch) # channels
+df1 = pd.read_csv(path + name_hds) # channel heads
+df2 = pd.read_csv(path + name_rge) # ridges
+
+bounds = src.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+proj = src.crs
+utm = 18
+
+
+#%%
+fig = plt.figure(figsize=(9,7))
+
+# Set the projection to UTM zone 18
+ax = fig.add_subplot(1, 1, 1, projection=ccrs.UTM(utm))
+
+projected_coords = ax.projection.transform_points(ccrs.Geodetic(), df['longitude'], df['latitude'])
+ax.scatter(projected_coords[:,0], projected_coords[:,1], s=0.5, c='b', transform=ccrs.UTM(utm)) #c=df['Stream Order'],
+
+projected_coords = ax.projection.transform_points(ccrs.Geodetic(), df1['longitude'], df1['latitude'])
+ax.scatter(projected_coords[:,0], projected_coords[:,1], s=3, c='r', transform=ccrs.UTM(utm)) #c=df['Stream Order'],
+
+projected_coords = ax.projection.transform_points(ccrs.Geodetic(), df2['longitude'], df2['latitude'])
+ax.scatter(projected_coords[:,0], projected_coords[:,1], s=0.5, c='gold', transform=ccrs.UTM(utm)) #c='g',
+
+# Limit the extent of the map to a small longitude/latitude range.
+ax.set_extent(Extent, crs=ccrs.UTM(utm))
+# ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False)
+cs = ax.imshow(src.read(1), cmap='binary', vmin=100, #cmap='plasma', vmin=-0.1, vmax=0.1, #
+               extent=Extent, transform=ccrs.UTM(utm), origin="upper")
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DruidRun_channels.png')
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/OregonRidge_channels.png')
+plt.show()
+
+#%%
+
+#%% Calculate kernel density of hillslope length and relief
+
+i = 0
+path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
+
+name_ht_DRDR = "%s-%d_HilltopData_TN.csv"%(base_output_path, 0)
+name_ht_BRBR = "%s-%d_HilltopData_TN.csv"%(base_output_path, 1)
+name_ht_DRBR = "%s-%d_HilltopData_TN.csv"%(base_output_path, 2)
+name_ht_BRDR = "%s-%d_HilltopData_TN.csv"%(base_output_path, 3)
+
+df_ht_DRDR = pd.read_csv(path + name_ht_DRDR)
+df_ht_BRBR = pd.read_csv(path + name_ht_BRBR)
+df_ht_DRBR = pd.read_csv(path + name_ht_DRBR)
+df_ht_BRDR = pd.read_csv(path + name_ht_BRDR)
+
+#%% violin plots of hillslope length and relief
+
+pos   = [1, 2, 3, 4]
+label = ['DR-DR', 'DR-BR', 'BR-BR', 'BR-DR']
+clrs = ['firebrick', 'firebrick', 'royalblue','royalblue']
+
+Lh = [df_ht_DRDR['Lh'].values, df_ht_DRBR['Lh'].values, df_ht_BRBR['Lh'].values, df_ht_BRDR['Lh'].values]
+R = [df_ht_DRDR['R'].values, df_ht_DRBR['R'].values, df_ht_BRBR['R'].values, df_ht_BRDR['R'].values]
+
+#%%
+fig, axs = plt.subplots(ncols=2, figsize=(8,5))
+parts = axs[0].violinplot(Lh, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+DRDRq1, DRDRmed, DRDRq3 = np.percentile(df_ht_DRDR['Lh'].values, [25, 50, 75])
+BRBRq1, BRBRmed, BRBRq3 = np.percentile(df_ht_BRBR['Lh'].values, [25, 50, 75])
+DRBRq1, DRBRmed, DRBRq3 = np.percentile(df_ht_DRBR['Lh'].values, [25, 50, 75])
+BRDRq1, BRDRmed, BRDRq3 = np.percentile(df_ht_BRDR['Lh'].values, [25, 50, 75])
+# dfLh = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Lh'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Lh'].mean()]], 
+#                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+# dfLh.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Lh_stats.csv', float_format="%.1f")
+axs[0].vlines(pos, [DRDRq1, DRBRq1, BRBRq1, BRDRq1], [DRDRq3, DRBRq3, BRBRq3, BRDRq3], color='k', linestyle='-', lw=5)
+# axs[0].set_ylim((-10,800))
+axs[0].set_xticks(pos)
+axs[0].set_xticklabels(label)
+axs[0].set_ylabel('Length (m)')
+axs[0].set_title('Hillslope Length')
+
+parts = axs[1].violinplot(R, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+DRDRq1, DRDRmed, DRDRq3 = np.percentile(df_ht_DRDR['R'].values, [25, 50, 75])
+BRBRq1, BRBRmed, BRBRq3 = np.percentile(df_ht_BRBR['R'].values, [25, 50, 75])
+DRBRq1, DRBRmed, DRBRq3 = np.percentile(df_ht_DRBR['R'].values, [25, 50, 75])
+BRDRq1, BRDRmed, BRDRq3 = np.percentile(df_ht_BRDR['R'].values, [25, 50, 75])
+# dfR = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['R'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['R'].mean()]], 
+#                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+# dfR.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_R_modeled_stats.csv', float_format="%.1f")
+axs[1].vlines(pos, [DRDRq1, DRBRq1, BRBRq1, BRDRq1], [DRDRq3, DRBRq3, BRBRq3, BRDRq3], color='k', linestyle='-', lw=5)
+axs[1].set_xticks(pos)
+axs[1].set_xticklabels(label)
+axs[1].set_title('Hillslope Relief')
+axs[1].set_ylabel('Height (m)')
+plt.show()
+fig.tight_layout()
+plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+
+
+
+#%%
+
+#%% Calculate kernel density of hillslope length and relief
+
+path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
+path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+
+name_ht_DR = "baltimore2015_DR1_HilltopData_TN.csv"
+name_ht_BR = "baltimore2015_BR_HilltopData_TN.csv"
+
+df_ht_DR = pd.read_csv(path1 + name_ht_DR)
+df_ht_DR = df_ht_DR[df_ht_DR['BasinID']==99]
+df_ht_BR = pd.read_csv(path2 + name_ht_BR)
+df_ht_BR = df_ht_BR[df_ht_BR['BasinID']==71]
+
+#%% violin plots of hillslope length and relief
+
+pos   = [1, 2, 3, 4, 5, 6]
+label = ['Druids Run', 'Baisman Run', 'DR-DR', 'DR-BR', 'BR-BR', 'BR-DR']
+clrs = ['firebrick', 'royalblue', 'firebrick', 'firebrick', 'royalblue','royalblue']
+
+Lh = [df_ht_DR['Lh'].values, 
+      df_ht_BR['Lh'].values, 
+      df_ht_DRDR['Lh'].values, 
+      df_ht_DRBR['Lh'].values, 
+      df_ht_BRBR['Lh'].values, 
+      df_ht_BRDR['Lh'].values]
+R = [df_ht_DR['R'].values, 
+     df_ht_BR['R'].values,
+     df_ht_DRDR['R'].values, 
+     df_ht_DRBR['R'].values, 
+     df_ht_BRBR['R'].values, 
+     df_ht_BRDR['R'].values]
+
+#%%
+fig, axs = plt.subplots(ncols=2, figsize=(6,4))
+parts = axs[0].violinplot(Lh, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+k = 0
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    if k < 2:
+        pc.set_alpha(0.8)
+    else:
+        pc.set_alpha(0.4)
+    k += 1
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+DRDRq1, DRDRmed, DRDRq3 = np.percentile(df_ht_DRDR['Lh'].values, [25, 50, 75])
+BRBRq1, BRBRmed, BRBRq3 = np.percentile(df_ht_BRBR['Lh'].values, [25, 50, 75])
+DRBRq1, DRBRmed, DRBRq3 = np.percentile(df_ht_DRBR['Lh'].values, [25, 50, 75])
+BRDRq1, BRDRmed, BRDRq3 = np.percentile(df_ht_BRDR['Lh'].values, [25, 50, 75])
+DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['Lh'].values, [25, 50, 75])
+BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Lh'].values, [25, 50, 75])
+# dfLh = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Lh'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Lh'].mean()]], 
+#                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+# dfLh.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Lh_stats.csv', float_format="%.1f")
+axs[0].vlines(pos, 
+              [DRq1, BRq1, DRDRq1, DRBRq1, BRBRq1, BRDRq1], 
+              [DRq3, BRq3, DRDRq3, DRBRq3, BRBRq3, BRDRq3], 
+              color='k', linestyle='-', lw=3)
+axs[0].set_xticks(pos)
+axs[0].set_xticklabels(label, rotation=45, ha='right')
+axs[0].set_ylabel('Length (m)')
+axs[0].set_title('Hillslope Length')
+
+parts = axs[1].violinplot(R, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+k = 0
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    if k < 2:
+        pc.set_alpha(0.8)
+    else:
+        pc.set_alpha(0.4)
+    k += 1
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+DRDRq1, DRDRmed, DRDRq3 = np.percentile(df_ht_DRDR['R'].values, [25, 50, 75])
+BRBRq1, BRBRmed, BRBRq3 = np.percentile(df_ht_BRBR['R'].values, [25, 50, 75])
+DRBRq1, DRBRmed, DRBRq3 = np.percentile(df_ht_DRBR['R'].values, [25, 50, 75])
+BRDRq1, BRDRmed, BRDRq3 = np.percentile(df_ht_BRDR['R'].values, [25, 50, 75])
+DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['R'].values, [25, 50, 75])
+BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['R'].values, [25, 50, 75])
+# dfR = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['R'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['R'].mean()]], 
+#                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+# dfR.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_R_modeled_stats.csv', float_format="%.1f")
+axs[1].vlines(pos, 
+              [DRq1, BRq1, DRDRq1, DRBRq1, BRBRq1, BRDRq1], 
+              [DRq3, BRq3, DRDRq3, DRBRq3, BRBRq3, BRDRq3], 
+              color='k', linestyle='-', lw=3)
+axs[1].set_xticks(pos)
+axs[1].set_xticklabels(label, rotation=45, ha='right')
+axs[1].set_title('Hillslope Relief')
+axs[1].set_ylabel('Height (m)')
+plt.show()
+fig.tight_layout()
+plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+
+
 
 # %%
 
