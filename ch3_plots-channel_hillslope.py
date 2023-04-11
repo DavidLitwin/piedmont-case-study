@@ -81,6 +81,40 @@ Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
 proj = src.crs
 utm = 18
 
+#%% get average elevations
+
+path_DR = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
+name_DR = 'baltimore2015_DR1.bil'
+basin_DR = 'baltimore2015_DR1_AllBasins.bil'
+
+path_BR = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+name_BR = 'baltimore2015_BR.bil'
+basin_BR = 'baltimore2015_BR_AllBasins.bil'
+
+src_DR = rd.open(path_DR + name_DR)
+src_BR = rd.open(path_BR + name_BR)
+elev_DR = src_DR.read(1)
+elev_BR = src_BR.read(1)
+
+bsn_BR = rd.open(path_BR + basin_BR)
+bsn_DR = rd.open(path_DR + basin_DR)
+basin_DR = bsn_DR.read(1) > 0 
+basin_BR = bsn_BR.read(1) > 0 
+
+
+elev_mean_DR = np.mean(elev_DR[basin_DR])
+elev_mean_BR = np.mean(elev_BR[basin_BR])
+
+plt.figure()
+plt.imshow(basin_DR,
+            origin="upper", 
+            extent=Extent,
+            cmap='viridis',
+            )
+plt.show()
+
+
+
 #%%
 
 fig = plt.figure(figsize=(9,7))
