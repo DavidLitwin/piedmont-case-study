@@ -221,7 +221,7 @@ Ksp_Stat = ranksums(Ksp_DR, Ksp_BR)
 # add to dataframe and apply Qstar_max
 df_params['Ksp'] = df_Ksp['q50']
 df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
-df_params['v0'] = 30 #10 # window we averaged DEMs over to calculate most quantities
+df_params['v0'] = 30 # 15 10 # window we averaged DEMs over to calculate most quantities
 
 #%% Violin plot - total erodibility
 
@@ -526,14 +526,15 @@ dtg_max_nd = 2e-3 # maximum geomorphic timestep in units of tg [-]
 Th_nd = 25 # hydrologic time in units of (tr+tb) [-]
 bin_capacity_nd = 0.05 # bin capacity as a proportion of mean storm depth
 
-df_params['Nx'] = 200 #125 # number of grid cells width and height
+df_params['Nx'] = 200 #400 #125 # number of grid cells width and height
 df_params['Nz'] = round((df_params['b']*df_params['na'])/(bin_capacity_nd*df_params['ds']))
-df_params['Tg'] = 5e7*(365*24*3600) # Tg_nd*df_params['tg'] # Total geomorphic simulation time [s]
+df_params['Tg'] = 5e7*(365*24*3600) # Tg_nd*df_params['tg'] # Total geomorphic simulation time [s] #5e6
 df_params['ksf'] = 5000 #ksf_base/df_params['beta'] # morphologic scaling factor
 df_params['Th'] = Th_nd*(df_params['tr']+df_params['tb']) # hydrologic simulation time [s]
 df_params['dtg'] = df_params['ksf']*df_params['Th'] # geomorphic timestep [s]
 df_params['dtg_max'] = dtg_max_nd*df_params['tg'] # the maximum duration of a geomorphic substep [s]
-df_params['output_interval'] = (10/(df_params['dtg']/df_params['tg'])).round().astype(int)
+df_params['output_interval'] = 5000 #(10/(df_params['dtg']/df_params['tg'])).round().astype(int)
+df_params['BCs'] = '1111' # set all fixed value boundary conditions
 
 # %%
 
@@ -544,7 +545,7 @@ df_params.drop(columns=['label'], inplace=True)
 #%%
 
 folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
-N = 21
+N = 24
 
 
 for i in df_params.index:
