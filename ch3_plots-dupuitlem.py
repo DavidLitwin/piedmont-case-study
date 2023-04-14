@@ -52,16 +52,18 @@ plot_array = np.array([[0, 3],
 
 #%%
 
-plt.figure(figsize=(6,5))
+plt.figure(figsize=(5,3))
 for ID in model_runs:
     df_r_change = pd.read_csv('%s/%s/relief_change_%d.csv'%(directory, base_output_path,ID))    
-    plt.plot(df_r_change['t_nd'][1:], df_r_change['r_nd'][1:]) # - df_r_change['r_nd'][1]
-
-# plt.xlim((-50,2050))
-# plt.ylim((-50,1250))
+    plt.plot(df_r_change['t_nd'][1:]*df_params['tg'].loc[ID]*1/(3600*24*365), 
+             df_r_change['r_nd'][1:]*df_params['hg'].loc[ID], 
+             label=df_params['label'].loc[ID])
 plt.legend(frameon=False)
-plt.xlabel(r'$t/t_g$', fontsize=14)
-plt.ylabel(r'$\bar{z} / h_g$', fontsize=14)
+# plt.xlabel(r'$t/t_g$')
+# plt.ylabel(r'$\bar{z} / h_g$')
+plt.xlabel(r'$t$')
+plt.ylabel(r'$\bar{z}$')
+plt.tight_layout()
 plt.savefig('%s/%s/r_change.pdf'%(directory, base_output_path), transparent=True, dpi=300)
 
 #%% plot_runs hillshades
@@ -182,17 +184,18 @@ df_3['index'] = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR']
 df_3.set_index('index', inplace=True)
 
 df_satall = pd.concat([df_1, df_2, df_3], axis=0)
-df_satall = df_satall.reindex(['Druids Run', 'Baisman Run', 'DR-DR', 'DR-BR', 'BR-BR', 'BR-DR'])
+df_satall = df_satall.reindex(['Druids Run', 'DR-DR', 'DR-BR', 'Baisman Run', 'BR-BR', 'BR-DR'])
 
 # make figure
-fig, ax = plt.subplots(figsize=(5,4))
+fig, ax = plt.subplots(figsize=(5,3.5))
 bottom = np.zeros(6)
 width=0.5 
 
 color_dict = {'sat_never':"peru", 'sat_variable':"dodgerblue", 'sat_always':"navy"}
 
+pos = [1,2,3,4.5,5.5,6.5]
 for col in df_satall.columns:
-    p = ax.bar(df_satall.index, 
+    p = ax.bar(pos, 
                df_satall[col].values, 
                width, 
                label=col.split('_')[-1], 
@@ -202,15 +205,16 @@ for col in df_satall.columns:
     bottom += df_satall[col].values
 ax.set_ylim((0,1))
 ax.set_ylabel('Fractional Area')
-# fig.legend(loc='outside center right', frameon=False)
-box = ax.get_position()
-ax.set_position([box.x0, box.y0, box.width * 0.85, box.height])
-ax.legend(bbox_to_anchor=(1.0, 0.6),
-          bbox_transform=fig.transFigure,
-          frameon=False, 
-          )
+ax.set_xticks(pos)
+ax.set_xticklabels(df_satall.index, ha='right', rotation=45)
+## fig.legend(loc='outside center right', frameon=False)
+# box = ax.get_position()
+# ax.set_position([box.x0, box.y0, box.width * 0.85, box.height])
+# ax.legend(bbox_to_anchor=(1.0, 0.6),
+#           bbox_transform=fig.transFigure,
+#           frameon=False, 
+#           )
 ax.spines[['right', 'top']].set_visible(False)
-ax.tick_params(rotation=45)
 plt.tight_layout()
 plt.show()
 plt.savefig('%s/%s/sat_compare_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
@@ -221,10 +225,10 @@ plt.savefig('%s/%s/sat_compare_%s.pdf'%(directory, base_output_path, base_output
 
 i = 0
 path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
-name = '%s-%d_hs.bil'%(base_output_path, i) # hillshade
-name_ch = "%s-%d_AT_CN.csv"%(base_output_path, i)  # channels
-name_hds = "%s-%d_ATsources.csv"%(base_output_path, i) # channel heads
-name_rge = "%s-%d_RidgeData.csv"%(base_output_path, i) # ridges
+name = '%s-%d_pad_hs.bil'%(base_output_path, i) # hillshade
+name_ch = "%s-%d_pad_D_CN.csv"%(base_output_path, i)  # channels
+name_hds = "%s-%d_pad_Dsources.csv"%(base_output_path, i) # channel heads
+name_rge = "%s-%d_pad_RidgeData.csv"%(base_output_path, i) # ridges
 
 src = rd.open(path + name) # hillshade
 df = pd.read_csv(path + name_ch) # channels
@@ -261,17 +265,15 @@ cs = ax.imshow(src.read(1), cmap='binary', vmin=100, #cmap='plasma', vmin=-0.1, 
 # plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/OregonRidge_channels.png')
 plt.show()
 
-#%%
-
 #%% Calculate kernel density of hillslope length and relief
 
 i = 0
 path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
 
-name_ht_DRDR = "%s-%d_HilltopData_TN.csv"%(base_output_path, 0)
-name_ht_BRBR = "%s-%d_HilltopData_TN.csv"%(base_output_path, 1)
-name_ht_DRBR = "%s-%d_HilltopData_TN.csv"%(base_output_path, 2)
-name_ht_BRDR = "%s-%d_HilltopData_TN.csv"%(base_output_path, 3)
+name_ht_DRDR = "%s-%d_pad_HilltopData_TN.csv"%(base_output_path, 0)
+name_ht_BRBR = "%s-%d_pad_HilltopData_TN.csv"%(base_output_path, 1)
+name_ht_DRBR = "%s-%d_pad_HilltopData_TN.csv"%(base_output_path, 2)
+name_ht_BRDR = "%s-%d_pad_HilltopData_TN.csv"%(base_output_path, 3)
 
 df_ht_DRDR = pd.read_csv(path + name_ht_DRDR)
 df_ht_BRBR = pd.read_csv(path + name_ht_BRBR)
@@ -357,20 +359,21 @@ df_ht_BR = df_ht_BR[df_ht_BR['BasinID']==71]
 
 #%% violin plots of hillslope length and relief
 
-pos   = [1, 2, 3, 4, 5, 6]
-label = ['Druids Run', 'Baisman Run', 'DR-DR', 'DR-BR', 'BR-BR', 'BR-DR']
-clrs = ['firebrick', 'royalblue', 'firebrick', 'firebrick', 'royalblue','royalblue']
+pos   = [1, 2, 3, 4.5, 5.5, 6.5]
+label = ['Druids Run', 'DR-DR', 'DR-BR', 'Baisman Run', 'BR-BR', 'BR-DR']
+clrs = ['firebrick', 'gray', 'gray', 'royalblue','gray', 'gray']
+alph = [0.8, 0.4, 0.4, 0.8, 0.4, 0.4]
 
 Lh = [df_ht_DR['Lh'].values, 
-      df_ht_BR['Lh'].values, 
       df_ht_DRDR['Lh'].values, 
       df_ht_DRBR['Lh'].values, 
+      df_ht_BR['Lh'].values, 
       df_ht_BRBR['Lh'].values, 
       df_ht_BRDR['Lh'].values]
 R = [df_ht_DR['R'].values, 
-     df_ht_BR['R'].values,
      df_ht_DRDR['R'].values, 
-     df_ht_DRBR['R'].values, 
+     df_ht_DRBR['R'].values,
+     df_ht_BR['R'].values, 
      df_ht_BRBR['R'].values, 
      df_ht_BRDR['R'].values]
 
@@ -378,14 +381,10 @@ R = [df_ht_DR['R'].values,
 fig, axs = plt.subplots(ncols=2, figsize=(6,4))
 parts = axs[0].violinplot(Lh, pos, vert=True, showmeans=False, showmedians=True,
         showextrema=True)
-k = 0
 for pc, color in zip(parts['bodies'], clrs):
     pc.set_facecolor(color)
-    if k < 2:
-        pc.set_alpha(0.8)
-    else:
-        pc.set_alpha(0.4)
-    k += 1
+    pc.set_alpha(0.8)
+
 for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
     vp = parts[partname]
     vp.set_edgecolor("k")
@@ -400,24 +399,20 @@ BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Lh'].values, [25, 50, 75])
 #                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
 # dfLh.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Lh_stats.csv', float_format="%.1f")
 axs[0].vlines(pos, 
-              [DRq1, BRq1, DRDRq1, DRBRq1, BRBRq1, BRDRq1], 
-              [DRq3, BRq3, DRDRq3, DRBRq3, BRBRq3, BRDRq3], 
+              [DRq1, DRDRq1, DRBRq1, BRq1, BRBRq1, BRDRq1], 
+              [DRq3, DRDRq3, DRBRq3, BRq3, BRBRq3, BRDRq3], 
               color='k', linestyle='-', lw=3)
 axs[0].set_xticks(pos)
 axs[0].set_xticklabels(label, rotation=45, ha='right')
+axs[0].set_yscale('log')
 axs[0].set_ylabel('Length (m)')
 axs[0].set_title('Hillslope Length')
 
 parts = axs[1].violinplot(R, pos, vert=True, showmeans=False, showmedians=True,
         showextrema=True)
-k = 0
 for pc, color in zip(parts['bodies'], clrs):
     pc.set_facecolor(color)
-    if k < 2:
-        pc.set_alpha(0.8)
-    else:
-        pc.set_alpha(0.4)
-    k += 1
+    pc.set_alpha(0.8)
 for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
     vp = parts[partname]
     vp.set_edgecolor("k")
@@ -432,11 +427,12 @@ BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['R'].values, [25, 50, 75])
 #                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
 # dfR.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_R_modeled_stats.csv', float_format="%.1f")
 axs[1].vlines(pos, 
-              [DRq1, BRq1, DRDRq1, DRBRq1, BRBRq1, BRDRq1], 
-              [DRq3, BRq3, DRDRq3, DRBRq3, BRBRq3, BRDRq3], 
+              [DRq1, DRDRq1, DRBRq1, BRq1, BRBRq1, BRDRq1], 
+              [DRq3, DRDRq3, DRBRq3, BRq3, BRBRq3, BRDRq3], 
               color='k', linestyle='-', lw=3)
 axs[1].set_xticks(pos)
 axs[1].set_xticklabels(label, rotation=45, ha='right')
+axs[1].set_yscale('log')
 axs[1].set_title('Hillslope Relief')
 axs[1].set_ylabel('Height (m)')
 plt.show()
@@ -444,6 +440,68 @@ fig.tight_layout()
 plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
 plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
+
+#%% scatter with errorbar
+
+dfs = [df_ht_DRDR, df_ht_DRBR, df_ht_BRBR, df_ht_BRDR]
+names = ['DR-DR', 'DR-BR', 'BR-BR', 'BR-DR']
+# dfs = [df_ht_DRDR, df_ht_BRDR, df_ht_BRBR, df_ht_DRBR]
+# names = ['DR-DR', 'BR-DR', 'BR-BR', 'DR-BR']
+
+fig, axs = plt.subplots(ncols=2, figsize=(6,4))
+for i, df in enumerate(dfs):
+    q1, med, q3 = np.percentile(df['Lh'].values, [25, 50, 75])
+    DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['Lh'].values, [25, 50, 75])
+    BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Lh'].values, [25, 50, 75])
+
+    if i < 2:
+        axs[0].errorbar([DRmed], [med], 
+                    xerr=[[DRmed-DRq1], [DRq3-DRmed]], 
+                    yerr=[[med-q1], [q3-med]],
+                    fmt="o",
+                    label=names[i]
+                    )
+    else:
+          axs[0].errorbar([BRmed], [med], 
+                    xerr=[[BRmed-BRq1], [BRq3-BRmed]], 
+                    yerr=[[med-q1], [q3-med]],
+                    fmt="o",
+                    label=names[i]
+                    )      
+
+    q1, med, q3 = np.percentile(df['R'].values, [25, 50, 75])
+    DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['R'].values, [25, 50, 75])
+    BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['R'].values, [25, 50, 75])
+    
+    if i < 2:
+        axs[1].errorbar(DRmed, med, 
+                    xerr=[[DRmed-DRq1], [DRq3-DRmed]], 
+                    yerr=[[med-q1], [q3-med]],
+                    fmt="o",
+                    label=names[i]
+                    )
+    else:
+          axs[1].errorbar(BRmed, med, 
+                    xerr=[[BRmed-BRq1], [BRq3-BRmed]], 
+                    yerr=[[med-q1], [q3-med]],
+                    fmt="o",
+                    label=names[i]
+                    )   
+axs[0].axline([10,10],[100,100], color='k', linestyle='--', label='1:1')
+axs[0].set_xscale('log')
+axs[0].set_yscale('log')
+axs[0].set_xlabel(r'Measured $\overline{L_h}$')
+axs[0].set_ylabel(r'Modeled $\overline{L_h}$')
+axs[1].axline([1,1],[10,10], color='k', linestyle='--')
+axs[1].set_xscale('log')
+axs[1].set_yscale('log')
+axs[1].set_xlabel(r'Measured $\overline{R}$')
+axs[1].set_ylabel(r'Modeled $\overline{R}$')
+axs[0].legend(frameon=False)
+plt.tight_layout()
+plt.show()
+plt.savefig('%s/%s/Lh_R_scatter_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/Lh_R_scatter_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 # %%
