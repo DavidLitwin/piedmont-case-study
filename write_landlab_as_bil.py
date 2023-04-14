@@ -25,6 +25,7 @@ def write_envi(filename, arr, dx, in_ds):
     out_ds.SetGeoTransform(out_gt)
 
     band = out_ds.GetRasterBand(1)
+    band.SetNoDataValue(-9999)
     band.WriteArray(arr)
     band.FlushCache()
     band.ComputeStatistics(False)
@@ -47,9 +48,12 @@ model_runs = np.arange(4)
 for i in model_runs:
     grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
     arr = grid.at_node['topographic__elevation'].reshape(grid.shape)
-    arr = arr[1:-1, 1:-1]
+    # arr[np.isnan(arr)] = -9999
+    arr_0 = arr[1:-1, 1:-1]
+    arr_1 = np.pad(arr_0, ((5,5),(0,5)), mode='symmetric')
     
-    write_envi('%s/%s/%s-%d.bil'%(directory, base_output_path, base_output_path, i), arr, grid.dx, bais_ds)
+    write_envi('%s/%s/%s-%d_pad.bil'%(directory, base_output_path, base_output_path, i), 
+               arr_1, grid.dx, bais_ds)
 
 
 
