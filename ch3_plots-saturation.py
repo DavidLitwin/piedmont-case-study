@@ -156,16 +156,41 @@ dfqug['Q m/d'] = dfqug['Q'] * (1/1000) * 3600 * 24 * (1/area_DRUW) # m/liter * s
 
 # %% Baisman Run: Load Q
 
-site_BR = '01583580'
-site_PB = '01583570'
+## get from web
+# site_BR = '01583580'
+# site_PB = '01583570'
+# dfq_cont = nwis.get_record(sites=site_BR, service='iv', start='2022-08-01', end='2023-03-21')
+# dfqug_cont = nwis.get_record(sites=site_PB, service='iv', start='2022-08-01', end='2023-03-21')
 
-dfq_cont = nwis.get_record(sites=site_BR, service='iv', start='2022-08-01', end='2023-03-21')
-dfqug_cont = nwis.get_record(sites=site_PB, service='iv', start='2022-08-01', end='2023-03-21')
+# get from file
+path_BR ="C:/Users/dgbli/Documents/Research/Oregon Ridge/data/USGS/Discharge_01583580_20220401.csv"
+path_PB ="C:/Users/dgbli/Documents/Research/Oregon Ridge/data/USGS/Discharge_01583570_20220401.csv"
+dfq_cont = pd.read_csv(path_BR, header=14)
+dfqug_cont = pd.read_csv(path_PB, header=14)
 
-# load existing data
-# path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/"
-# dfq_cont = pd.read_csv(path_BR+'dfq.csv', index_col='datetime')
-# dfqug_cont = pd.read_csv(path_BR+'dfqug.csv', index_col='datetime')
+area_BR = 381e4 #m2
+dfq_cont['Q m/d'] = dfq_cont['Value']*0.3048**3 * 3600 * 24 * (1/area_BR) #m3/ft3 * sec/hr * hr/d * 1/m2
+dfq_cont['datetime'] = pd.to_datetime(dfq_cont['Timestamp (UTC-05:00)'], utc=True)
+dfq_cont.set_index('datetime', inplace=True)
+dfq_cont = dfq_cont.filter(['Q m/d', 'Grade'])
+
+area_PB = 37e4 #m2
+dfqug_cont['Q m/d'] = dfqug_cont['Value']*0.3048**3 * 3600 * 24 * (1/area_PB) #m3/ft3 * sec/hr * hr/d * 1/m2
+dfqug_cont['datetime'] = pd.to_datetime(dfqug_cont['Timestamp (UTC-05:00)'], utc=True)
+dfqug_cont.set_index('datetime', inplace=True)
+dfqug_cont = dfqug_cont.filter(['Q m/d', 'Grade'])
+
+# get the start times of every saturation survey
+times = dfall.datetime_start.unique()
+times = [time.round('5min') for time in times]
+
+# isolate discharge at those times
+dfq = dfq_cont.loc[times]
+dfq['date'] = dfq.index.date
+
+dfqug = dfqug_cont.loc[times]
+dfqug['date'] = dfqug.index.date
+
 
 #%% Baisman run: process Q
 
@@ -568,6 +593,57 @@ with open(save_directory+f'summary_{site}_logTI_logQ_{res}.txt', 'w') as fh:
 # predict in sample
 in_sample = pd.DataFrame({'prob':model.predict()})
 
+#%% run TPR-FPR analysis
+
+N = 1000
+# p_all = np.linspace(0.2,0.8,N) #DR
+p_all = np.linspace(0.05,0.8,N) #BR
+
+sens = np.zeros(N)
+spec = np.zeros(N)
+dist = np.zeros(N)
+
+covs = model.cov_params()
+means = model.params
+
+for i, p in enumerate(p_all):
+
+    in_sample['pred_label'] = (in_sample['prob']>p).astype(int)
+    cs = pd.crosstab(in_sample['pred_label'],dfnew['sat_bin'])
+    sens[i] = cs[1][1]/(cs[1][1] + cs[1][0])
+    spec[i] = cs[0][0]/(cs[0][0] + cs[0][1])
+
+    dist[i] = abs(sens[i]-(1-spec[i]))
+
+i = np.argmax(dist)
+p_best = p_all[i]
+
+#%% plot TPR-FPR 
+
+s1 = 8
+s2 = (5,4)
+
+fig, ax = plt.subplots(figsize=s2)
+sc = ax.scatter(1-spec, sens, c=p_all, s=s1, vmin=0.0, vmax=0.8)
+ax.axline([0,0], [1,1], color='k', linestyle='--', label='1:1')
+ax.set_xlabel('False Positive Ratio (FPR)')
+ax.set_ylabel('True Positive Ratio (TPR)')
+fig.colorbar(sc, label=r'$p^*$')
+ax.legend(frameon=False)
+fig.tight_layout()
+plt.savefig(save_directory+'FPR_TPR_thresh_TI_Q_%s.png'%site, dpi=300, transparent=True)
+plt.savefig(save_directory+'FPR_TPR_thresh_TI_Q_%s.pdf'%site, transparent=True)
+
+fig, ax = plt.subplots(figsize=s2)
+sc = ax.scatter(p_all, dist, c='b', s=s1, vmin=0.0, vmax=0.8)
+# ax.plot(T_all[:,0], dist, 'k', linewidth=0.5, zorder=100)
+ax.set_xlabel(r'$p^*$')
+ax.set_ylabel('TPR-FPR')
+fig.tight_layout()
+plt.savefig(save_directory+'trans_dist_thresh_TI_Q_%s.png'%site, dpi=300, transparent=True)
+plt.savefig(save_directory+'trans_dist_thresh_TI_Q_%s.pdf'%site, transparent=True)
+
+
 #%% Predict out of sample, and plot with TI CDF
 
 TI1 = np.linspace(0.01,22,100)
@@ -640,7 +716,7 @@ sat_state = np.zeros_like(TI_range)
 Q_all = Q_all[~np.isnan(Q_all)]
 for i, Q in enumerate(Q_all):
     pred = model.predict(exog=dict(TI_filtered=TI_range, logQ=np.log(Q)*np.ones_like(TI_range)))
-    sat_state += 1*(pred.values>0.5)
+    sat_state += 1*(pred.values>p_best)
 
 sat_state = sat_state / len(Q_all)
 sat_class = np.ones_like(sat_state)
