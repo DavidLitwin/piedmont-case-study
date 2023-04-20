@@ -12,19 +12,22 @@ import dataretrieval.nwis as nwis
 from Hydrograph.hydrograph import sepBaseflow
 
 
-path_DR = "C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/DruidRun_precip_15min_2022_4-2023_1.csv"
-path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/Baisman_precip_15min_2022_4-2023_1.csv"
+area_BR = 381e4 #m2
+area_PB = 37e4 #m2
+area_DR = 107e4 #m2
 
+path_DR = "C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/"
+path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/"
 
 #%% if you want the data already made:
 
-dfq_BR = pd.read_csv(path_BR+'df_qbp.csv')
-dfq_DR = pd.read_csv(path_DR+'dfq_qbp.csv')
+dfq_DR = pd.read_csv(path_DR+'df_qbp.csv', parse_dates=[0,7,8], index_col=0)
+dfq_BR = pd.read_csv(path_BR+'df_qbp.csv', parse_dates=[0,7,8], index_col=0)
 
 # %% load precip
 
-dfp_DR = pd.read_csv(path_DR)
-dfp_BR = pd.read_csv(path_BR)
+dfp_DR = pd.read_csv(path_DR+'DruidRun_precip_15min_2022_4-2023_1.csv')
+dfp_BR = pd.read_csv(path_BR+'Baisman_precip_15min_2022_4-2023_1.csv')
 
 dfp_BR['Date'] = pd.to_datetime(dfp_BR['Datetime'], utc=True)
 dfp_BR.set_index('Date', inplace=True)
@@ -49,11 +52,9 @@ dfqug.to_csv(path+'dfqug.csv')
 #%% Baisman run: process Q
 
 # area normalized discharge
-area_BR = 381e4 #m2
 dfq['Total runoff [m^3 s^-1]'] = dfq['00060']*0.3048**3 #m3/ft3 
 dfq.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
 
-area_PB = 37e4 #m2
 dfqug['Total runoff [m^3 s^-1]'] = dfqug['00060']*0.3048**3 #m3/ft3
 dfqug.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
 
@@ -167,7 +168,6 @@ dfq_DR['Date'] = pd.to_datetime(dfq_DR['Datetime'], utc=True)
 dfq_DR.set_index('Date', inplace=True)
 dfq_DR.drop(columns=['Datetime'], inplace=True)
 
-area_DR = 107e4 #m2
 dfq_DR['Total runoff [m^3 s^-1]'] = dfq_DR['Q m3/s']
 dfq_DR.drop(columns=['Q m3/s'], inplace=True)
 
