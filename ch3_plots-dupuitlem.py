@@ -19,7 +19,7 @@ from landlab.io.netcdf import from_netcdf
 from generate_colormap import get_continuous_cmap
 
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
-base_output_path = 'CaseStudy_21'
+base_output_path = 'CaseStudy_24'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2
@@ -265,86 +265,24 @@ cs = ax.imshow(src.read(1), cmap='binary', vmin=100, #cmap='plasma', vmin=-0.1, 
 # plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/OregonRidge_channels.png')
 plt.show()
 
-#%% Calculate kernel density of hillslope length and relief
+#%% Hillslope length and relief: model 1
 
-i = 0
 path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
 
-name_ht_DRDR = "%s-%d_pad_HilltopData_TN.csv"%(base_output_path, 0)
-name_ht_BRBR = "%s-%d_pad_HilltopData_TN.csv"%(base_output_path, 1)
-name_ht_DRBR = "%s-%d_pad_HilltopData_TN.csv"%(base_output_path, 2)
-name_ht_BRDR = "%s-%d_pad_HilltopData_TN.csv"%(base_output_path, 3)
+files_ht = ["%s-%d_pad_HilltopData_TN.csv"%(base_output_path, i) for i in range(4)]
+df_ht_all = [pd.read_csv(path + file_ht) for file_ht in files_ht]
+names = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR'] # in order
 
-df_ht_DRDR = pd.read_csv(path + name_ht_DRDR)
-df_ht_BRBR = pd.read_csv(path + name_ht_BRBR)
-df_ht_DRBR = pd.read_csv(path + name_ht_DRBR)
-df_ht_BRDR = pd.read_csv(path + name_ht_BRDR)
+#%% Hillslope length and relief: model 2
 
-#%% violin plots of hillslope length and relief
+base_output_path_2 = 'CaseStudy_21'
+path_2 = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path_2
 
-pos   = [1, 2, 3, 4]
-label = ['DR-DR', 'DR-BR', 'BR-BR', 'BR-DR']
-clrs = ['firebrick', 'firebrick', 'royalblue','royalblue']
+files_ht_2 = ["%s-%d_pad_HilltopData_TN.csv"%(base_output_path_2, i) for i in range(4)]
+df_ht_all_2 = [pd.read_csv(path_2 + file_ht) for file_ht in files_ht_2]
+names_2 = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR'] # in order
 
-Lh = [df_ht_DRDR['Lh'].values, df_ht_DRBR['Lh'].values, df_ht_BRBR['Lh'].values, df_ht_BRDR['Lh'].values]
-R = [df_ht_DRDR['R'].values, df_ht_DRBR['R'].values, df_ht_BRBR['R'].values, df_ht_BRDR['R'].values]
-
-#%%
-fig, axs = plt.subplots(ncols=2, figsize=(8,5))
-parts = axs[0].violinplot(Lh, pos, vert=True, showmeans=False, showmedians=True,
-        showextrema=True)
-for pc, color in zip(parts['bodies'], clrs):
-    pc.set_facecolor(color)
-    pc.set_alpha(0.8)
-for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
-    vp = parts[partname]
-    vp.set_edgecolor("k")
-    vp.set_linewidth(1)
-DRDRq1, DRDRmed, DRDRq3 = np.percentile(df_ht_DRDR['Lh'].values, [25, 50, 75])
-BRBRq1, BRBRmed, BRBRq3 = np.percentile(df_ht_BRBR['Lh'].values, [25, 50, 75])
-DRBRq1, DRBRmed, DRBRq3 = np.percentile(df_ht_DRBR['Lh'].values, [25, 50, 75])
-BRDRq1, BRDRmed, BRDRq3 = np.percentile(df_ht_BRDR['Lh'].values, [25, 50, 75])
-# dfLh = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Lh'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Lh'].mean()]], 
-#                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
-# dfLh.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Lh_stats.csv', float_format="%.1f")
-axs[0].vlines(pos, [DRDRq1, DRBRq1, BRBRq1, BRDRq1], [DRDRq3, DRBRq3, BRBRq3, BRDRq3], color='k', linestyle='-', lw=5)
-# axs[0].set_ylim((-10,800))
-axs[0].set_xticks(pos)
-axs[0].set_xticklabels(label)
-axs[0].set_ylabel('Length (m)')
-axs[0].set_title('Hillslope Length')
-
-parts = axs[1].violinplot(R, pos, vert=True, showmeans=False, showmedians=True,
-        showextrema=True)
-for pc, color in zip(parts['bodies'], clrs):
-    pc.set_facecolor(color)
-    pc.set_alpha(0.8)
-for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
-    vp = parts[partname]
-    vp.set_edgecolor("k")
-    vp.set_linewidth(1)
-DRDRq1, DRDRmed, DRDRq3 = np.percentile(df_ht_DRDR['R'].values, [25, 50, 75])
-BRBRq1, BRBRmed, BRBRq3 = np.percentile(df_ht_BRBR['R'].values, [25, 50, 75])
-DRBRq1, DRBRmed, DRBRq3 = np.percentile(df_ht_DRBR['R'].values, [25, 50, 75])
-BRDRq1, BRDRmed, BRDRq3 = np.percentile(df_ht_BRDR['R'].values, [25, 50, 75])
-# dfR = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['R'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['R'].mean()]], 
-#                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
-# dfR.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_R_modeled_stats.csv', float_format="%.1f")
-axs[1].vlines(pos, [DRDRq1, DRBRq1, BRBRq1, BRDRq1], [DRDRq3, DRBRq3, BRBRq3, BRDRq3], color='k', linestyle='-', lw=5)
-axs[1].set_xticks(pos)
-axs[1].set_xticklabels(label)
-axs[1].set_title('Hillslope Relief')
-axs[1].set_ylabel('Height (m)')
-plt.show()
-fig.tight_layout()
-plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
-
-
-
-#%%
-
-#%% Calculate kernel density of hillslope length and relief
+#%% Hillslope length and relief: field
 
 path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
 path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
@@ -357,25 +295,36 @@ df_ht_DR = df_ht_DR[df_ht_DR['BasinID']==99]
 df_ht_BR = pd.read_csv(path2 + name_ht_BR)
 df_ht_BR = df_ht_BR[df_ht_BR['BasinID']==71]
 
+df_ht_sites = [df_ht_DR, df_ht_BR]
+names_sites = ['Druids Run', 'Baisman Run']
+
+#%% collect sites and models
+
+# collect things for main model results
+names += names_sites
+df_ht_all += df_ht_sites
+ht_dict = dict(zip(names, df_ht_all))
+
+# collect things for alternate model results
+names_2 += names_sites
+df_ht_all_2 += df_ht_sites
+ht_dict_2 = dict(zip(names_2, df_ht_all_2))
+
 #%% violin plots of hillslope length and relief
 
-pos   = [1, 2, 3, 4.5, 5.5, 6.5]
-label = ['Druids Run', 'DR-DR', 'DR-BR', 'Baisman Run', 'BR-BR', 'BR-DR']
+# select whether we want to plot original or alt
+ht_dict_plot = ht_dict #ht_dict_2
+
+# select order and set some plot attributes
+labels = ['Druids Run', 'DR-DR', 'DR-BR', 'Baisman Run', 'BR-BR', 'BR-DR']
 clrs = ['firebrick', 'gray', 'gray', 'royalblue','gray', 'gray']
+pos   = [1, 2, 3, 4.5, 5.5, 6.5]
 alph = [0.8, 0.4, 0.4, 0.8, 0.4, 0.4]
 
-Lh = [df_ht_DR['Lh'].values, 
-      df_ht_DRDR['Lh'].values, 
-      df_ht_DRBR['Lh'].values, 
-      df_ht_BR['Lh'].values, 
-      df_ht_BRBR['Lh'].values, 
-      df_ht_BRDR['Lh'].values]
-R = [df_ht_DR['R'].values, 
-     df_ht_DRDR['R'].values, 
-     df_ht_DRBR['R'].values,
-     df_ht_BR['R'].values, 
-     df_ht_BRBR['R'].values, 
-     df_ht_BRDR['R'].values]
+# get them in the right order and then get the values we want
+dfs = [ht_dict[label] for label in labels]
+Lh = [df['Lh'].values for df in dfs]
+R = [df['R'].values for df in dfs]
 
 #%%
 fig, axs = plt.subplots(ncols=2, figsize=(6,4))
@@ -384,26 +333,20 @@ parts = axs[0].violinplot(Lh, pos, vert=True, showmeans=False, showmedians=True,
 for pc, color in zip(parts['bodies'], clrs):
     pc.set_facecolor(color)
     pc.set_alpha(0.8)
-
 for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
     vp = parts[partname]
     vp.set_edgecolor("k")
     vp.set_linewidth(1)
-DRDRq1, DRDRmed, DRDRq3 = np.percentile(df_ht_DRDR['Lh'].values, [25, 50, 75])
-BRBRq1, BRBRmed, BRBRq3 = np.percentile(df_ht_BRBR['Lh'].values, [25, 50, 75])
-DRBRq1, DRBRmed, DRBRq3 = np.percentile(df_ht_DRBR['Lh'].values, [25, 50, 75])
-BRDRq1, BRDRmed, BRDRq3 = np.percentile(df_ht_BRDR['Lh'].values, [25, 50, 75])
-DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['Lh'].values, [25, 50, 75])
-BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Lh'].values, [25, 50, 75])
+
+q1s = [np.percentile(lh, 25) for lh in Lh]
+q3s = [np.percentile(lh, 75) for lh in Lh]
+meds = [np.percentile(lh, 50) for lh in Lh]
 # dfLh = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Lh'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Lh'].mean()]], 
 #                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
 # dfLh.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Lh_stats.csv', float_format="%.1f")
-axs[0].vlines(pos, 
-              [DRq1, DRDRq1, DRBRq1, BRq1, BRBRq1, BRDRq1], 
-              [DRq3, DRDRq3, DRBRq3, BRq3, BRBRq3, BRDRq3], 
-              color='k', linestyle='-', lw=3)
+axs[0].vlines(pos, q1s, q3s, color='k', linestyle='-', lw=3)
 axs[0].set_xticks(pos)
-axs[0].set_xticklabels(label, rotation=45, ha='right')
+axs[0].set_xticklabels(labels, rotation=45, ha='right')
 axs[0].set_yscale('log')
 axs[0].set_ylabel('Length (m)')
 axs[0].set_title('Hillslope Length')
@@ -417,36 +360,105 @@ for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
     vp = parts[partname]
     vp.set_edgecolor("k")
     vp.set_linewidth(1)
-DRDRq1, DRDRmed, DRDRq3 = np.percentile(df_ht_DRDR['R'].values, [25, 50, 75])
-BRBRq1, BRBRmed, BRBRq3 = np.percentile(df_ht_BRBR['R'].values, [25, 50, 75])
-DRBRq1, DRBRmed, DRBRq3 = np.percentile(df_ht_DRBR['R'].values, [25, 50, 75])
-BRDRq1, BRDRmed, BRDRq3 = np.percentile(df_ht_BRDR['R'].values, [25, 50, 75])
-DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['R'].values, [25, 50, 75])
-BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['R'].values, [25, 50, 75])
+q1s = [np.percentile(r, 25) for r in R]
+q3s = [np.percentile(r, 75) for r in R]
+meds = [np.percentile(r, 50) for r in R]
 # dfR = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['R'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['R'].mean()]], 
 #                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
 # dfR.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_R_modeled_stats.csv', float_format="%.1f")
-axs[1].vlines(pos, 
-              [DRq1, DRDRq1, DRBRq1, BRq1, BRBRq1, BRDRq1], 
-              [DRq3, DRDRq3, DRBRq3, BRq3, BRBRq3, BRDRq3], 
-              color='k', linestyle='-', lw=3)
+axs[1].vlines(pos, q1s, q3s, color='k', linestyle='-', lw=3)
 axs[1].set_xticks(pos)
-axs[1].set_xticklabels(label, rotation=45, ha='right')
+axs[1].set_xticklabels(labels, rotation=45, ha='right')
 axs[1].set_yscale('log')
 axs[1].set_title('Hillslope Relief')
 axs[1].set_ylabel('Height (m)')
 plt.show()
 fig.tight_layout()
-plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+# plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+# plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% scatter with errorbar
 
-dfs = [df_ht_DRDR, df_ht_DRBR, df_ht_BRBR, df_ht_BRDR]
-names = ['DR-DR', 'DR-BR', 'BR-BR', 'BR-DR']
-# dfs = [df_ht_DRDR, df_ht_BRDR, df_ht_BRBR, df_ht_DRBR]
-# names = ['DR-DR', 'BR-DR', 'BR-BR', 'DR-BR']
+# assemble 
+# df_ht_sites = [df_ht_DR, df_ht_BR]
+# names_sites = ['Druids Run', 'Baisman Run']
+
+labels = ['DR-DR', 'BR-BR']
+dfs_1 = [ht_dict[label] for label in labels]
+dfs_2 = [ht_dict_2[label] for label in labels]
+
+dfs_models = dfs_1 + dfs_2
+dfs_sites = df_ht_sites + df_ht_sites
+
+labels = ['DR-DR (1)', 'BR-BR (1)', 'DR-DR (2)', 'BR-BR (2)']
+df_all = pd.DataFrame(index=labels)
+
+df_all['Lh_q1_mod'] = [np.percentile(df['Lh'].values, 25) for df in dfs_models]
+df_all['Lh_q3_mod']  = [np.percentile(df['Lh'].values, 75) for df in dfs_models]
+df_all['Lh_q2_mod']  = [np.percentile(df['Lh'].values, 50) for df in dfs_models]
+
+df_all['Lh_q1_site'] = [np.percentile(df['Lh'].values, 25) for df in dfs_sites]
+df_all['Lh_q3_site']  = [np.percentile(df['Lh'].values, 75) for df in dfs_sites]
+df_all['Lh_q2_site']  = [np.percentile(df['Lh'].values, 50) for df in dfs_sites]
+
+df_all['R_q1_mod'] = [np.percentile(df['R'].values, 25) for df in dfs_models]
+df_all['R_q3_mod']  = [np.percentile(df['R'].values, 75) for df in dfs_models]
+df_all['R_q2_mod']  = [np.percentile(df['R'].values, 50) for df in dfs_models]
+
+df_all['R_q1_site'] = [np.percentile(df['R'].values, 25) for df in dfs_sites]
+df_all['R_q3_site']  = [np.percentile(df['R'].values, 75) for df in dfs_sites]
+df_all['R_q2_site']  = [np.percentile(df['R'].values, 50) for df in dfs_sites]
+
+df_all['Lh_site_lower'] = df_all['Lh_q2_site']-df_all['Lh_q1_site']
+df_all['R_site_lower'] = df_all['R_q2_site']-df_all['R_q1_site']
+df_all['Lh_site_upper'] = df_all['Lh_q3_site']-df_all['Lh_q2_site']
+df_all['R_site_upper'] = df_all['R_q3_site']-df_all['R_q2_site']
+
+df_all['Lh_mod_lower'] = df_all['Lh_q2_mod']-df_all['Lh_q1_mod']
+df_all['R_mod_lower'] = df_all['R_q2_mod']-df_all['R_q1_mod']
+df_all['Lh_mod_upper'] = df_all['Lh_q3_mod']-df_all['Lh_q2_mod']
+df_all['R_mod_upper'] = df_all['R_q3_mod']-df_all['R_q2_mod']
+
+
+#%%
+
+fig, axs = plt.subplots(ncols=2, figsize=(6,4))
+
+plot_labels = ['DR-DR (0.3)', 'BR-BR (0.3)', 'DR-DR (0.6)']
+for i in range(3):
+    axs[0].errorbar([df_all['Lh_q2_site'].iloc[i]], [df_all['Lh_q2_mod'].iloc[i]], 
+                        xerr=[[df_all['Lh_site_lower'].iloc[i]], [df_all['Lh_site_upper'].iloc[i]]],
+                        yerr=[[df_all['Lh_mod_lower'].iloc[i]], [df_all['Lh_mod_upper'].iloc[i]]],
+                        fmt="o",
+                        label=plot_labels[i] #df_all.index.values[i]
+                        )
+    axs[1].errorbar([df_all['R_q2_site'].iloc[i]], [df_all['R_q2_mod'].iloc[i]],
+                        xerr=[[df_all['R_site_lower'].iloc[i]], [df_all['R_site_upper'].iloc[i]]],
+                        yerr=[[df_all['R_mod_lower'].iloc[i]], [df_all['R_mod_upper'].iloc[i]]],
+                        fmt="o",
+                        label=plot_labels[i] #df_all.index.values[i]
+                        )
+axs[0].axline([10,10],[100,100], color='k', linestyle='--', label='1:1')
+axs[0].set_xscale('log')
+axs[0].set_yscale('log')
+axs[0].set_xlabel(r'Measured $\overline{L_h}$')
+axs[0].set_ylabel(r'Modeled $\overline{L_h}$')
+axs[1].axline([1,1],[10,10], color='k', linestyle='--')
+axs[1].set_xscale('log')
+axs[1].set_yscale('log')
+axs[1].set_xlabel(r'Measured $\overline{R}$')
+axs[1].set_ylabel(r'Modeled $\overline{R}$')
+axs[0].legend(loc='lower left')
+plt.tight_layout()
+plt.show()
+plt.savefig('%s/%s/Lh_R_scatter_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/Lh_R_scatter_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+
+
+
+#%%
+
 
 fig, axs = plt.subplots(ncols=2, figsize=(6,4))
 for i, df in enumerate(dfs):
@@ -500,8 +512,8 @@ axs[1].set_ylabel(r'Modeled $\overline{R}$')
 axs[0].legend(frameon=False)
 plt.tight_layout()
 plt.show()
-plt.savefig('%s/%s/Lh_R_scatter_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-plt.savefig('%s/%s/Lh_R_scatter_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+# plt.savefig('%s/%s/Lh_R_scatter_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+# plt.savefig('%s/%s/Lh_R_scatter_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 # %%
@@ -536,125 +548,23 @@ for i in inds:
     plt.savefig('%s/%s/cross_section_%s_%d.png'%(directory, base_output_path, base_output_path,i), dpi=300, transparent=True)
 
 
+#%%
+fig1, axs1 = plt.subplots(figsize=(4,4)) 
+fig2, axs2 = plt.subplots(figsize=(4,4)) 
 
-
-
-# %%
-#%% saturation discharge 
-
-cmap1 = copy.copy(cm.viridis)
-cmap1.set_bad(cmap1(0))
-
-i_max = 0
-
-fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(10,6)) #(8,6)
-
-for i in plot_runs:
-    m = np.where(plot_array==i)[0][0]
-    n = np.where(plot_array==i)[1][0]
-    
-    # df = pickle.load(open('%s/%s/q_s_dt_ID_%d.p'%(directory, base_output_path, i), 'rb'))
-    df = pd.read_csv('%s/%s/q_s_dt_ID_%d.csv'%(directory, base_output_path, i))
+for i in model_runs:
     grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
-
-    Atot = np.sum(grid.cell_area_at_node[grid.core_nodes])
-    Qb = df['qb']/(Atot*df_params['p'][i])
+    qstar = grid.at_node['surface_water_effective__discharge']/(df_params['p'][i]*grid.at_node['drainage_area'])
+    area = grid.at_node['drainage_area']
     
-    Q = df['qs_star']
-    S = df['S_star']
-    qs_cells = df['sat_nodes']/grid.number_of_cells #same as number of core nodes
-    r = df['r']
-    ibar = (df_params['ds'][i]/df_params['tr'][i])*np.sum(grid.cell_area_at_node)
-    i_max = max(i_max, max(r/ibar))
-    rstar = r/ibar
-    
-    sort = np.argsort(S)
-    ind = 1000
+    ord = np.argsort(qstar)
 
-    sc = axs[m, n].scatter(Q[ind:], 
-                            qs_cells[ind:], 
-                            color='lightgray', 
-                            s=4, 
-                            alpha=0.05,
-                            rasterized=True)
-    
-    sc = axs[m, n].scatter(Qb[ind:], #[sort[ind:]] 
-                            qs_cells[ind:], 
-                            c=S[ind:], 
-                            s=4, 
-                            alpha=0.2, 
-                            # vmin=0.0,
-                            # vmax=1.0,
-                            norm=colors.LogNorm(vmin=1e-3, vmax=1), 
-                            cmap=cmap1,
-                            rasterized=True)
+    axs1.scatter(area[ord], qstar[ord], label=df_params['label'].loc[i], alpha=0.3, s=8)
 
-    axs[m, n].text(0.05, 
-                    0.92, 
-                    str(i), 
-                    transform=axs[m, n].transAxes, 
-                    fontsize=8, 
-                    verticalalignment='top',
-                    )
-    axs[m, n].ticklabel_format(style='sci')
-    axs[m, n].tick_params(axis='both', which='major')
-    # axs[m ,n].set_ylim((1e-3,1))
-    # axs[m ,n].set_xlim((1e-4,200))
-    axs[m ,n].set_yscale('log')
-    axs[m ,n].set_xscale('log')
-    # if m != nrows-1:
-    #     axs[m, n].set_xticklabels([])
-    # if n != 0:
-    #     axs[m, n].set_yticklabels([])
+    axs2.plot(qstar[ord], np.linspace(0,1,len(ord)), label=df_params['label'].loc[i], alpha=0.3)
 
-fig.subplots_adjust(right=0.75, hspace=0.15, wspace=0.15)
-rect_cb = [0.8, 0.35, 0.03, 0.3]
-ax_cb = plt.axes(rect_cb)
-cbar = fig.colorbar(sc, cax=ax_cb, orientation="vertical", extend="min")
-cbar.set_label(label='$S^*$', size=16)
-cbar.solids.set_edgecolor("face")
-
-axs[-1, 0].set_ylabel('$A^*_{sat}$', size=16)
-axs[-1, 0].set_xlabel('$Q_b^*$', size=16)
-
-
-# plt.savefig('%s/%s/Q_sat_S_%s.png'%(directory, base_output_path), dpi=300)
-# plt.savefig('%s/%s/Qb_sat_S.pdf'%(directory, base_output_path), dpi=300)
-# plt.close()
-
-# %%
-
-
-inds = [10, 22]
-
-i=0
-
-fig, axs = plt.subplots(figsize=(4,5))
-
-
-grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
-sat_storm = grid.at_node['sat_mean_end_storm']
-sat_interstorm = grid.at_node['sat_mean_end_interstorm']
-sat_class = grid.at_node['saturation_class']
-labels = ["dry", "variable", "wet"]    
-
-dx = grid.dx
-y = np.arange(grid.shape[0] + 1) * dx - dx * 0.5
-x = np.arange(grid.shape[1] + 1) * dx - dx * 0.5
-
-L1 = ["peru", "dodgerblue", "navy"]
-cmap = colors.ListedColormap(L1)
-norm = colors.BoundaryNorm(np.arange(-0.5, 3), cmap.N)
-fmt = ticker.FuncFormatter(lambda x, pos: labels[norm(x)])
-
-im = axs.imshow(sat_class.reshape(grid.shape).T, 
-                        origin="lower", 
-                        extent=(x[0], x[-1], y[0], y[-1]), 
-                        cmap=cmap,
-                        norm=norm,
-                        interpolation="none",
-                        )
-axs.axis('off')
-plt.savefig('%s/%s/sat_class_%s_%d.png'%(directory, base_output_path, base_output_path,i), dpi=300, transparent=True)
+axs1.set_xscale('log')
+axs1.legend(frameon=False)
+axs2.legend(frameon=False)
 
 # %%
