@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import pickle
+import shutil
 from scipy.stats import norm, truncnorm, ranksums
 from calc_storm_stats import get_event_interevent_arrays
 
@@ -53,18 +54,18 @@ U_gen = truncnorm.rvs(a, np.inf, loc=U_mean, scale=U_std, size=10000, random_sta
 
 # %% D: Diffusivity
 
-# rock bulk density:
-rho_serp = 2.6 # average for serpentines
-rho_schist = 2.7 # avg for mica schist g/cm3
+# # rock bulk density:
+# rho_serp = 2.6 # average for serpentines
+# rho_schist = 2.7 # avg for mica schist g/cm3
 
-# regolith bulk density
-df_DR_bulk = pd.read_csv(path_DR+'SoilSurvey/BD_depth.csv')
-rho_DR = calc_weighted_avg(df_DR_bulk, 'Rating (grams per\ncubic centimeter)')
-df_BR_bulk = pd.read_csv(path_BR+'SoilSurvey/BD_depth.csv')
-rho_BR = calc_weighted_avg(df_BR_bulk, 'Rating (grams per\ncubic centimeter)')
+# # regolith bulk density
+# df_DR_bulk = pd.read_csv(path_DR+'SoilSurvey/BD_depth.csv')
+# rho_DR = calc_weighted_avg(df_DR_bulk, 'Rating (grams per\ncubic centimeter)')
+# df_BR_bulk = pd.read_csv(path_BR+'SoilSurvey/BD_depth.csv')
+# rho_BR = calc_weighted_avg(df_BR_bulk, 'Rating (grams per\ncubic centimeter)')
 
-# calculate bulk density
-df_params['rho_ratio'] = [rho_serp/rho_DR, rho_schist/rho_BR]
+# # calculate bulk density
+# df_params['rho_ratio'] = [rho_serp/rho_DR, rho_schist/rho_BR]
 
 # load hilltop data
 path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
@@ -90,12 +91,14 @@ q25_C_BR, med_C_BR, q75_C_BR = np.percentile(df_ht_BR['Cht'][cBR], [25, 50, 75])
 df_Cht = pd.DataFrame(data=[[q25_C_DR, med_C_DR, q75_C_DR], [q25_C_BR, med_C_BR, q75_C_BR]], 
                     columns=['q25','q50','q75'], index=['DR','BR'])
 
-# assume rho ratio is just one value
-rho_ratio = 2
-
 # calculate diffusivity for each combination
-D_DR = (df_params['rho_ratio']['DR'] * U_gen)/(-Cht_DR_gen)
-D_BR = (df_params['rho_ratio']['BR'] * U_gen)/(-Cht_BR_gen)
+# D_DR = (df_params['rho_ratio']['DR'] * U_gen)/(-Cht_DR_gen)
+# D_BR = (df_params['rho_ratio']['BR'] * U_gen)/(-Cht_BR_gen)
+
+# calculate diffusivity for each combination. These are effective diffusivities, because 
+# we are not accounting for the difference in bulk density
+D_DR = U_gen/(-Cht_DR_gen)
+D_BR = U_gen/(-Cht_BR_gen)
 
 # get quantiles
 q25_DR, med_DR, q75_DR = np.percentile(D_DR, [25, 50, 75])
@@ -345,7 +348,7 @@ df_params['p'] = df_params['ds']/(df_params['tr'] + df_params['tb'])
 # df_params['p'] = 45.6 * 0.0254 / (3600*24*365) # m/s
 
 
-# %% permeable thickness and hydralic conductivity
+# %% permeable thickness and hydraulic conductivity
 
 # for DR, select the dominant soil type, chrome silt loam. All slope classes (CeB, CeC, CeD)
 # have the same values, so aggregate them together. There's a permeability contrast at the A
@@ -534,7 +537,7 @@ df_params['Th'] = Th_nd*(df_params['tr']+df_params['tb']) # hydrologic simulatio
 df_params['dtg'] = df_params['ksf']*df_params['Th'] # geomorphic timestep [s]
 df_params['dtg_max'] = dtg_max_nd*df_params['tg'] # the maximum duration of a geomorphic substep [s]
 df_params['output_interval'] = 5000 #(10/(df_params['dtg']/df_params['tg'])).round().astype(int)
-df_params['BCs'] = '1111' # set all fixed value boundary conditions
+df_params['BCs'] = '4414' # set all fixed value boundary conditions
 
 # %%
 
@@ -545,18 +548,20 @@ df_params.drop(columns=['label'], inplace=True)
 #%%
 
 folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
-N = 24
+# N = 24
+N = 2
 
 
 for i in df_params.index:
 
-    name = 'CaseStudy_%d-%d'%(N,i)
+    name = 'CaseStudy_cross_%d-%d'%(N,i)
     outpath = folder_path+name
     # outpath = os.path.join(folder_path, os.sep, name)
     if not os.path.exists(outpath):
         os.mkdir(outpath) 
     df_params.loc[i].to_csv(outpath+'/parameters.csv', index=True)
 
+    shutil.copyfile(__file__, outpath+'/ch3_model_parameters.py')
 
 
 # %% check parameters set 
