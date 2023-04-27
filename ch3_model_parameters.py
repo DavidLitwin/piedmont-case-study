@@ -82,6 +82,7 @@ cBR = df_ht_BR['Cht'] > -1
 cDR = df_ht_DR['Cht'] > -1
 
 # generate random samples for curvature by selecting with replacement
+np.random.seed(123)
 Cht_DR_gen = np.random.choice(df_ht_DR['Cht'][cDR], 10000, replace=True)
 Cht_BR_gen = np.random.choice(df_ht_BR['Cht'][cBR], 10000, replace=True)
 
@@ -158,10 +159,10 @@ for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
 DRq1, med_DR, DRq3 = np.percentile(D_DR*(3600*24*365), [25, 50, 75])
 BRq1, med_BR, BRq3 = np.percentile(D_BR*(3600*24*365), [25, 50, 75])
 axs[1].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
-axs[1].set_ylim((-6,3))
+axs[1].set_ylim((-8,3))
 axs[1].set_xticks(pos)
 axs[1].set_xticklabels(label)
-axs[1].set_ylabel(r'$\log_{10}(D \,\, (m^2/yr))$')
+axs[1].set_ylabel(r'$\log_{10}D \,\, (m^2/yr)$')
 axs[1].set_title('Hillslope Diffusivity')
 plt.show()
 fig.tight_layout()
@@ -194,6 +195,8 @@ Quant_BR = np.quantile(df_chi_BR['drainage_area'], 0.4)
 
 ksn_DR = df_chi_DR['m_chi'].loc[df_chi_DR['drainage_area']>Quant_DR]
 ksn_BR = df_chi_BR['m_chi'].loc[df_chi_BR['drainage_area']>Quant_BR]
+
+np.random.seed(1234)
 ksn_DR_gen = np.random.choice(ksn_DR, 10000, replace=True)
 ksn_BR_gen = np.random.choice(ksn_BR, 10000, replace=True)
 
