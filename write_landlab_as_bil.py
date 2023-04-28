@@ -42,7 +42,7 @@ bais_arr, bais_ds = read_envi(path+name)
 
 
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_21'
+base_output_path = 'CaseStudy_cross_2'
 model_runs = np.arange(4)
 
 for i in model_runs:

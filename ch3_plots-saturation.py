@@ -17,7 +17,7 @@ save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_deli
 
 #%%
 
-site = 'BR'
+site = 'DR'
 res = 5
 
 if site=='DR' and res>=1:
@@ -194,34 +194,34 @@ dfqug['date'] = dfqug.index.date
 
 #%% Baisman run: process Q
 
-# area normalized discharge
-area_BR = 381e4 #m2
-dfq_cont['Q m/d'] = dfq_cont['00060']*0.3048**3 * 3600 * 24 * (1/area_BR) #m3/ft3 * sec/hr * hr/d * 1/m2
-dfq_cont.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
+# # area normalized discharge
+# area_BR = 381e4 #m2
+# dfq_cont['Q m/d'] = dfq_cont['00060']*0.3048**3 * 3600 * 24 * (1/area_BR) #m3/ft3 * sec/hr * hr/d * 1/m2
+# dfq_cont.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
 
-area_PB = 37e4 #m2
-dfqug_cont['Q m/d'] = dfqug_cont['00060']*0.3048**3 * 3600 * 24 * (1/area_PB) #m3/ft3 * sec/hr * hr/d * 1/m2
-dfqug_cont.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
+# area_PB = 37e4 #m2
+# dfqug_cont['Q m/d'] = dfqug_cont['00060']*0.3048**3 * 3600 * 24 * (1/area_PB) #m3/ft3 * sec/hr * hr/d * 1/m2
+# dfqug_cont.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
 
-# index from string to datetime
-dfq_cont['datetime'] = pd.to_datetime(dfq_cont.index, utc=True)
-dfq_cont.set_index('datetime', inplace=True)
+# # index from string to datetime
+# dfq_cont['datetime'] = pd.to_datetime(dfq_cont.index, utc=True)
+# dfq_cont.set_index('datetime', inplace=True)
 
-dfqug_cont['datetime'] = pd.to_datetime(dfqug_cont.index, utc=True)
-dfqug_cont.set_index('datetime', inplace=True)
+# dfqug_cont['datetime'] = pd.to_datetime(dfqug_cont.index, utc=True)
+# dfqug_cont.set_index('datetime', inplace=True)
 
-# get the start times of every saturation survey
-times = dfall.datetime_start.unique()
-times = [time.round('5min') for time in times]
+# # get the start times of every saturation survey
+# times = dfall.datetime_start.unique()
+# times = [time.round('5min') for time in times]
 
-# isolate discharge at those times
-dfq = dfq_cont.loc[times]
-dfq['datetime'] = dfq.index
-dfq['date'] = dfq['datetime'].dt.date
+# # isolate discharge at those times
+# dfq = dfq_cont.loc[times]
+# dfq['datetime'] = dfq.index
+# dfq['date'] = dfq['datetime'].dt.date
 
-dfqug = dfqug_cont.loc[times]
-dfqug['datetime'] = dfqug.index
-dfqug['date'] = dfqug['datetime'].dt.date
+# dfqug = dfqug_cont.loc[times]
+# dfqug['datetime'] = dfqug.index
+# dfqug['date'] = dfqug['datetime'].dt.date
 
 #%% Add to saturation dataframe, get all TI
 
@@ -595,53 +595,53 @@ in_sample = pd.DataFrame({'prob':model.predict()})
 
 #%% run TPR-FPR analysis
 
-N = 1000
-# p_all = np.linspace(0.2,0.8,N) #DR
-p_all = np.linspace(0.05,0.8,N) #BR
+# N = 1000
+# # p_all = np.linspace(0.2,0.8,N) #DR
+# p_all = np.linspace(0.05,0.8,N) #BR
 
-sens = np.zeros(N)
-spec = np.zeros(N)
-dist = np.zeros(N)
+# sens = np.zeros(N)
+# spec = np.zeros(N)
+# dist = np.zeros(N)
 
-covs = model.cov_params()
-means = model.params
+# covs = model.cov_params()
+# means = model.params
 
-for i, p in enumerate(p_all):
+# for i, p in enumerate(p_all):
 
-    in_sample['pred_label'] = (in_sample['prob']>p).astype(int)
-    cs = pd.crosstab(in_sample['pred_label'],dfnew['sat_bin'])
-    sens[i] = cs[1][1]/(cs[1][1] + cs[1][0])
-    spec[i] = cs[0][0]/(cs[0][0] + cs[0][1])
+#     in_sample['pred_label'] = (in_sample['prob']>p).astype(int)
+#     cs = pd.crosstab(in_sample['pred_label'],dfnew['sat_bin'])
+#     sens[i] = cs[1][1]/(cs[1][1] + cs[1][0])
+#     spec[i] = cs[0][0]/(cs[0][0] + cs[0][1])
 
-    dist[i] = abs(sens[i]-(1-spec[i]))
+#     dist[i] = abs(sens[i]-(1-spec[i]))
 
-i = np.argmax(dist)
-p_best = p_all[i]
+# i = np.argmax(dist)
+# p_best = p_all[i]
 
 #%% plot TPR-FPR 
 
-s1 = 8
-s2 = (5,4)
+# s1 = 8
+# s2 = (5,4)
 
-fig, ax = plt.subplots(figsize=s2)
-sc = ax.scatter(1-spec, sens, c=p_all, s=s1, vmin=0.0, vmax=0.8)
-ax.axline([0,0], [1,1], color='k', linestyle='--', label='1:1')
-ax.set_xlabel('False Positive Ratio (FPR)')
-ax.set_ylabel('True Positive Ratio (TPR)')
-fig.colorbar(sc, label=r'$p^*$')
-ax.legend(frameon=False)
-fig.tight_layout()
-plt.savefig(save_directory+'FPR_TPR_thresh_TI_Q_%s.png'%site, dpi=300, transparent=True)
-plt.savefig(save_directory+'FPR_TPR_thresh_TI_Q_%s.pdf'%site, transparent=True)
+# fig, ax = plt.subplots(figsize=s2)
+# sc = ax.scatter(1-spec, sens, c=p_all, s=s1, vmin=0.0, vmax=0.8)
+# ax.axline([0,0], [1,1], color='k', linestyle='--', label='1:1')
+# ax.set_xlabel('False Positive Ratio (FPR)')
+# ax.set_ylabel('True Positive Ratio (TPR)')
+# fig.colorbar(sc, label=r'$p^*$')
+# ax.legend(frameon=False)
+# fig.tight_layout()
+# plt.savefig(save_directory+'FPR_TPR_thresh_TI_Q_%s.png'%site, dpi=300, transparent=True)
+# plt.savefig(save_directory+'FPR_TPR_thresh_TI_Q_%s.pdf'%site, transparent=True)
 
-fig, ax = plt.subplots(figsize=s2)
-sc = ax.scatter(p_all, dist, c='b', s=s1, vmin=0.0, vmax=0.8)
-# ax.plot(T_all[:,0], dist, 'k', linewidth=0.5, zorder=100)
-ax.set_xlabel(r'$p^*$')
-ax.set_ylabel('TPR-FPR')
-fig.tight_layout()
-plt.savefig(save_directory+'trans_dist_thresh_TI_Q_%s.png'%site, dpi=300, transparent=True)
-plt.savefig(save_directory+'trans_dist_thresh_TI_Q_%s.pdf'%site, transparent=True)
+# fig, ax = plt.subplots(figsize=s2)
+# sc = ax.scatter(p_all, dist, c='b', s=s1, vmin=0.0, vmax=0.8)
+# # ax.plot(T_all[:,0], dist, 'k', linewidth=0.5, zorder=100)
+# ax.set_xlabel(r'$p^*$')
+# ax.set_ylabel('TPR-FPR')
+# fig.tight_layout()
+# plt.savefig(save_directory+'trans_dist_thresh_TI_Q_%s.png'%site, dpi=300, transparent=True)
+# plt.savefig(save_directory+'trans_dist_thresh_TI_Q_%s.pdf'%site, transparent=True)
 
 
 #%% Predict out of sample, and plot with TI CDF
@@ -706,6 +706,8 @@ plt.savefig(save_directory+f'pred_sat_ti_pdf_{site}_logTI_logQ_{res}.png', trans
 
 #%% derive sat class from regression
 
+p_best = 0.5 # set p by hand
+
 TI_plot = tif.read(1).astype(float)
 
 Q_all = dfq_cont['Q m/d'].values
@@ -754,7 +756,8 @@ hs = src.read(1)
 shp = TI_plot.shape
 hs = np.ma.masked_array(hs, mask=hs==-9999)
 
-fig, ax = plt.subplots(figsize=(5,5)) #(9,5)
+figsize = (9,5) if site=='BR' else (5,5)
+fig, ax = plt.subplots(figsize=figsize) 
 ax.imshow(hs, cmap='binary', 
                 extent=Extent, origin="upper", vmin=160)
 im = ax.imshow(sat_class_plot.reshape(shp), 
