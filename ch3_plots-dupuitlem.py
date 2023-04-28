@@ -16,10 +16,11 @@ from matplotlib.colors import LightSource
 from landlab.io.netcdf import from_netcdf
 # plt.rc('text', usetex=True)
 
+from mpl_point_clicker import clicker
 from generate_colormap import get_continuous_cmap
 
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
-base_output_path = 'CaseStudy_24'
+base_output_path = 'CaseStudy_cross_1'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2
@@ -66,10 +67,43 @@ plt.ylabel(r'$\bar{z}$')
 plt.tight_layout()
 plt.savefig('%s/%s/r_change.pdf'%(directory, base_output_path), transparent=True, dpi=300)
 
+
+#%%
+
+i = 0
+utm = 18
+
+# channel network
+fig_p = plt.figure(figsize=(9,7))
+ax_p = fig_p.add_subplot(1, 1, 1, projection=ccrs.UTM(utm))
+
+path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
+name_ch = "%s-%d_pad_D_CN.csv"%(base_output_path, i)  # channels
+name = '%s-%d_pad_hs.bil'%(base_output_path, i) # hillshade
+df = pd.read_csv(path + name_ch) # channels
+src = rd.open(path + name) # hillshade
+bounds = src.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+proj = src.crs
+
+projected_coords = ax_p.projection.transform_points(ccrs.Geodetic(), df['longitude'], df['latitude'])
+coords = projected_coords[:,0:2]
+coords[:,0] = coords[:,1] - bounds.bottom
+coords[:,1] = coords[:,0] - bounds.left
+# A = np.array([[0,-1],[1,0]])
+# coords_T = np.matmul(coords, A)
+
+
+
 #%% plot_runs hillshades
+
+# channel network dummy figure
+fig_p = plt.figure(figsize=(9,7))
+ax_p = fig_p.add_subplot(1, 1, 1, projection=ccrs.UTM(18))
 
 fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6,6)) #(8,6)
 for i in plot_runs:
+
     m = np.where(plot_array==i)[0][0]
     n = np.where(plot_array==i)[1][0]
     
@@ -79,6 +113,15 @@ for i in plot_runs:
     dx = grid.dx
     y = np.arange(grid.shape[0] + 1) * dx - dx * 0.5
     x = np.arange(grid.shape[1] + 1) * dx - dx * 0.5
+
+    # channels in model grid coordinates
+    name_ch = "%s-%d_pad_D_CN.csv"%(base_output_path, i)  # channels
+    df = pd.read_csv('%s/%s/%s'%(directory, base_output_path, name_ch)) # channels
+    projected_coords = ax_p.projection.transform_points(ccrs.Geodetic(), df['longitude'], df['latitude'])
+    coords = projected_coords[:,0:2]
+    coords_T = np.zeros_like(coords)
+    coords_T[:,0] = np.max(y) - (coords[:,1] - (bounds.bottom+5*dx)) # add 5*dx for the padding we addded
+    coords_T[:,1] = coords[:,0] - (bounds.left)
  
     ls = LightSource(azdeg=135, altdeg=45)
     axs[m,n].imshow(
@@ -90,6 +133,7 @@ for i in plot_runs:
                     extent=(x[0], x[-1], y[0], y[-1]), 
                     cmap='gray',
                     )
+    axs[m,n].scatter(coords_T[:,0], coords_T[:,1], s=1, c='b')
     axs[m,n].text(0.04, 
                 0.95, 
                 df_params['label'][i], #i, #
@@ -107,12 +151,15 @@ for i in plot_runs:
         axs[m, n].set_xticklabels([])
     if n != 0:
         axs[m, n].set_yticklabels([])
+    axs[m, n].set_xlim((x[0],x[-1]))
+    axs[m, n].set_ylim((y[0],y[-1]))
 
 axs[-1, 0].set_ylabel(r'$y$ (m)')
 axs[-1, 0].set_xlabel(r'$x$ (m)')
+
 # plt.subplots_adjust(left=0.15, bottom=0.15, right=None, top=None, wspace=0.15, hspace=0.15)
-plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+# plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+# plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% Saturation class
@@ -220,14 +267,52 @@ plt.show()
 plt.savefig('%s/%s/sat_compare_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
 plt.savefig('%s/%s/sat_compare_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
-
-#%% Channels and Hillslopes on hillshade (projected coordinate method)
+#%% Hillshades (projected coordinates) - define channel network
 
 i = 0
 path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
 name = '%s-%d_pad_hs.bil'%(base_output_path, i) # hillshade
-name_ch = "%s-%d_pad_D_CN.csv"%(base_output_path, i)  # channels
-name_hds = "%s-%d_pad_Dsources.csv"%(base_output_path, i) # channel heads
+src = rd.open(path + name) # hillshade
+bounds = src.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+proj = src.crs
+utm = 18
+
+fig = plt.figure(figsize=(9,7))
+ax = fig.add_subplot(1, 1, 1, projection=ccrs.UTM(utm))
+klicker = clicker(ax, ["source"], markers=["o"])
+ax.set_extent(Extent, crs=ccrs.UTM(utm))
+cs = ax.imshow(src.read(1), cmap='binary', vmin=100, #cmap='plasma', vmin=-0.1, vmax=0.1, #
+               extent=Extent, transform=ccrs.UTM(utm), origin="upper")
+# plt.savefig('C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/%s-%d.pdf'%(base_output_path, base_output_path, i))
+plt.show()
+
+#%% get points
+
+out = klicker.get_positions()
+pts_utm = out['source']
+geo = ccrs.Geodetic()
+pts_latlon = geo.transform_points(ccrs.UTM(utm), pts_utm[:,0], pts_utm[:,1])
+
+df_sources = pd.DataFrame({'x':pts_utm[:,0], 
+                        'y':pts_utm[:,1], 
+                        'latitude':pts_latlon[:,1], 
+                        'longitude':pts_latlon[:,0]})
+df_sources.to_csv('%s/%s/%s-%d_EyeSources.csv'%(directory, base_output_path, base_output_path, i))
+
+#%% Channels and Hillslopes on hillshade (projected coordinate method)
+
+i = 1
+path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
+name = '%s-%d_pad_hs.bil'%(base_output_path, i) # hillshade
+# name_ch = "%s-%d_pad_D_CN.csv"%(base_output_path, i)  # channels
+# name_hds = "%s-%d_pad_Dsources.csv"%(base_output_path, i) # channel heads
+# name_rge = "%s-%d_pad_RidgeData.csv"%(base_output_path, i) # ridges
+# name_ch = "%s-%d_pad_AT_CN.csv"%(base_output_path, i)  # channels
+# name_hds = "%s-%d_pad_ATsources.csv"%(base_output_path, i) # channel heads
+# name_rge = "%s-%d_pad_RidgeData.csv"%(base_output_path, i) # ridges
+name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
+name_hds = "%s-%d_EyeSources.csv"%(base_output_path, i) # channel heads
 name_rge = "%s-%d_pad_RidgeData.csv"%(base_output_path, i) # ridges
 
 src = rd.open(path + name) # hillshade
@@ -246,6 +331,7 @@ fig = plt.figure(figsize=(9,7))
 
 # Set the projection to UTM zone 18
 ax = fig.add_subplot(1, 1, 1, projection=ccrs.UTM(utm))
+klicker = clicker(ax, ["source"], markers=["o"])
 
 projected_coords = ax.projection.transform_points(ccrs.Geodetic(), df['longitude'], df['latitude'])
 ax.scatter(projected_coords[:,0], projected_coords[:,1], s=0.5, c='b', transform=ccrs.UTM(utm)) #c=df['Stream Order'],
@@ -261,9 +347,22 @@ ax.set_extent(Extent, crs=ccrs.UTM(utm))
 # ax.gridlines(draw_labels=True, dms=False, x_inline=False, y_inline=False)
 cs = ax.imshow(src.read(1), cmap='binary', vmin=100, #cmap='plasma', vmin=-0.1, vmax=0.1, #
                extent=Extent, transform=ccrs.UTM(utm), origin="upper")
-# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DruidRun_channels.png')
-# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/OregonRidge_channels.png')
+# plt.savefig('C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/%s-%d.pdf'%(base_output_path, base_output_path, i))
 plt.show()
+
+#%% compare fill dem from lsdtt
+
+i = 1
+path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
+name = '%s-%d_pad.bil'%(base_output_path, i)
+name_fill = '%s-%d_pad_Fill.bil'%(base_output_path, i)
+
+src = rd.open(path + name)
+src_fill = rd.open(path + name_fill)
+diff = src_fill.read(1) - src.read(1)
+
+plt.figure()
+plt.imshow(diff)
 
 #%% Hillslope length and relief: model 1
 
