@@ -10,8 +10,17 @@ import shutil
 from scipy.stats import norm, truncnorm, ranksums
 from calc_storm_stats import get_event_interevent_arrays
 
-figpath = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
+# make figures?
+make_figures = False
 
+# model suffix (CaseStudy_cross_N)
+N = 4 
+
+# path to save things
+figpath = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
+folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
+
+# data paths for DR and BR
 path_DR = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
 path_BR = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
 
@@ -111,82 +120,72 @@ df_D = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]],
 # the calculated values look indistinguishable given uncertainty, so let's just
 # say that they are the same
 df_params['D'] =  df_D['q50'] #df_D['q50'].mean()
-
-#%%
-
 D_Stat = ranksums(D_DR, D_BR)
-
 
 #%% violin plot Cht and D
 
-pos   = [1, 2]
-label = ['Druids Run', 'Baisman Run']
-clrs = ['firebrick', 'royalblue']
-Cht = [np.log10(-df_ht_DR['Cht'][cDR]), np.log10(-df_ht_BR['Cht'][cBR])]
-D = [np.log10(D_DR*(3600*24*365)), np.log10(D_BR*(3600*24*365))]
+if make_figures:
 
-fig, axs = plt.subplots(ncols=2, figsize=(5,3.5))
-parts = axs[0].violinplot(Cht, pos, vert=True, showmeans=False, showmedians=True,
-        showextrema=True)
-for pc, color in zip(parts['bodies'], clrs):
-    pc.set_facecolor(color)
-    pc.set_alpha(0.8)
-for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
-    vp = parts[partname]
-    vp.set_edgecolor("k")
-    vp.set_linewidth(1)
-DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['Cht'][cDR], [25, 50, 75])
-BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Cht'][cBR], [25, 50, 75])
-dfCht = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Cht'][cDR].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Cht'][cBR].mean()]], 
-                    columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
-dfCht.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Cht_stats.csv', float_format="%.3e")
-axs[0].vlines(pos, np.log10(-np.array([DRq1, BRq1])), np.log10(-np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
-axs[0].set_ylim((-8,0))
-axs[0].set_xticks(pos)
-axs[0].set_xticklabels(label)
-axs[0].set_ylabel(r'$log_{10} (-C_{ht})$ (1/m)')
-axs[0].set_title('Hilltop Curvature')
+    pos   = [1, 2]
+    label = ['Druids Run', 'Baisman Run']
+    clrs = ['firebrick', 'royalblue']
+    Cht = [np.log10(-df_ht_DR['Cht'][cDR]), np.log10(-df_ht_BR['Cht'][cBR])]
+    D = [np.log10(D_DR*(3600*24*365)), np.log10(D_BR*(3600*24*365))]
 
-parts = axs[1].violinplot(D, pos, vert=True, showmeans=False, showmedians=True,
-        showextrema=True)
-for pc, color in zip(parts['bodies'], clrs):
-    pc.set_facecolor(color)
-    pc.set_alpha(0.8)
-for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
-    vp = parts[partname]
-    vp.set_edgecolor("k")
-    vp.set_linewidth(1)
-DRq1, med_DR, DRq3 = np.percentile(D_DR*(3600*24*365), [25, 50, 75])
-BRq1, med_BR, BRq3 = np.percentile(D_BR*(3600*24*365), [25, 50, 75])
-axs[1].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
-axs[1].set_ylim((-8,3))
-axs[1].set_xticks(pos)
-axs[1].set_xticklabels(label)
-axs[1].set_ylabel(r'$\log_{10}D \,\, (m^2/yr)$')
-axs[1].set_title('Hillslope Diffusivity')
-plt.show()
-fig.tight_layout()
-plt.savefig(figpath+'Cht_D_violinplot.png', dpi=300, transparent=True)
-plt.savefig(figpath+'Cht_D_violinplot.pdf', transparent=True)
+    fig, axs = plt.subplots(ncols=2, figsize=(5,3.5))
+    parts = axs[0].violinplot(Cht, pos, vert=True, showmeans=False, showmedians=True,
+            showextrema=True)
+    for pc, color in zip(parts['bodies'], clrs):
+        pc.set_facecolor(color)
+        pc.set_alpha(0.8)
+    for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+        vp = parts[partname]
+        vp.set_edgecolor("k")
+        vp.set_linewidth(1)
+    DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['Cht'][cDR], [25, 50, 75])
+    BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Cht'][cBR], [25, 50, 75])
+    dfCht = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Cht'][cDR].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Cht'][cBR].mean()]], 
+                        columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+    dfCht.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Cht_stats.csv', float_format="%.3e")
+    axs[0].vlines(pos, np.log10(-np.array([DRq1, BRq1])), np.log10(-np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
+    axs[0].set_ylim((-8,0))
+    axs[0].set_xticks(pos)
+    axs[0].set_xticklabels(label)
+    axs[0].set_ylabel(r'$log_{10} (-C_{ht})$ (1/m)')
+    axs[0].set_title('Hilltop Curvature')
+
+    parts = axs[1].violinplot(D, pos, vert=True, showmeans=False, showmedians=True,
+            showextrema=True)
+    for pc, color in zip(parts['bodies'], clrs):
+        pc.set_facecolor(color)
+        pc.set_alpha(0.8)
+    for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+        vp = parts[partname]
+        vp.set_edgecolor("k")
+        vp.set_linewidth(1)
+    DRq1, med_DR, DRq3 = np.percentile(D_DR*(3600*24*365), [25, 50, 75])
+    BRq1, med_BR, BRq3 = np.percentile(D_BR*(3600*24*365), [25, 50, 75])
+    axs[1].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
+    axs[1].set_ylim((-8,3))
+    axs[1].set_xticks(pos)
+    axs[1].set_xticklabels(label)
+    axs[1].set_ylabel(r'$\log_{10}D \,\, (m^2/yr)$')
+    axs[1].set_title('Hillslope Diffusivity')
+    plt.show()
+    fig.tight_layout()
+    plt.savefig(figpath+'Cht_D_violinplot.png', dpi=300, transparent=True)
+    plt.savefig(figpath+'Cht_D_violinplot.pdf', transparent=True)
 
 
 # %% K, m, n: streampower coefficients
 
+# import from chi analysis
 path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
 path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
-
 name_chi_DR = "baltimore2015_DR1_0.5_MChiSegmented.csv"
 name_chi_BR = "baltimore2015_BR_0.5_MChiSegmented.csv"
-
 df_chi_DR = pd.read_csv(path1 + name_chi_DR)
 df_chi_BR = pd.read_csv(path2 + name_chi_BR)
-
-
-#%%
-
-# estimate the runoff ratio Qstar_max = (Q/P) for the sites, which is needed to isolate K from Q* in our streampower law
-# start by assuming that they are the same, then iterate based on the model results.
-df_params['Qstar_max'] = [0.3,0.3] #0.6,0.3
 
 # choose steepness index of the segments with larger drainage areas, because 
 # this avoids headwaters where there should be more dependence on Q*
@@ -209,118 +208,125 @@ df_params['m_sp'] = 0.5 # requirement for DupuitLEM as currently formulated
 df_params['n_sp'] = df_params['m_sp']/df_params['concavity'] 
 # if you use concavity = 0.4, get n>1, consistent with Harel, Mudd, Attal 2016
 
-#%%
-
+# calculate total erodibility
 Ksp_DR = U_gen/ksn_DR_gen**df_params['n_sp']['DR'] # from streampower law, this is the total erodibility coefficient
 Ksp_BR = U_gen/ksn_BR_gen**df_params['n_sp']['BR']
 
-# get quantiles
+# get quantiles and make dataframe
 q25_DR, med_DR, q75_DR = np.percentile(Ksp_DR, [25, 50, 75])
 q25_BR, med_BR, q75_BR = np.percentile(Ksp_BR, [25, 50, 75])
-
 df_Ksp = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]], 
                     columns=['q25','q50','q75'], index=['DR','BR'])
 
 # calculate statistic
 Ksp_Stat = ranksums(Ksp_DR, Ksp_BR)
 
-# add to dataframe and apply Qstar_max
+#%% model parameters from chi analysis
+
+# estimate the runoff ratio Qstar_max = (Q/P) for the sites, which is needed to isolate K from Q* in our streampower law
+# start by assuming that they are the same, then iterate based on the model results.
+df_params['Qstar_max'] = [0.6,0.3] #0.3,0.3
+
+# calculate erodibility based on Qstar_max
 df_params['Ksp'] = df_Ksp['q50']
 df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
-df_params['v0'] = 30 # 15 10 # window we averaged DEMs over to calculate most quantities
+df_params['v0'] = 5 #30 # 15 10 # window we averaged DEMs over to calculate most quantities
 
 #%% Violin plot - total erodibility
 
-pos   = [1, 2]
-label = ['Druids Run', 'Baisman Run']
-clrs = ['firebrick', 'royalblue']
+if make_figures:
+        
+    pos   = [1, 2]
+    label = ['Druids Run', 'Baisman Run']
+    clrs = ['firebrick', 'royalblue']
 
-K = [np.log10(Ksp_DR*(3600*24*365)), np.log10(Ksp_BR*(3600*24*365))]
-q25_DR, med_DR, q75_DR = np.percentile(Ksp_DR, [25, 50, 75])
-q25_BR, med_BR, q75_BR = np.percentile(Ksp_BR, [25, 50, 75])
+    K = [np.log10(Ksp_DR*(3600*24*365)), np.log10(Ksp_BR*(3600*24*365))]
+    q25_DR, med_DR, q75_DR = np.percentile(Ksp_DR, [25, 50, 75])
+    q25_BR, med_BR, q75_BR = np.percentile(Ksp_BR, [25, 50, 75])
 
-fig, ax = plt.subplots(figsize=(4,5))
-parts = ax.violinplot(K, pos, vert=True, showmeans=False, showmedians=True,
-        showextrema=True)
-for pc, color in zip(parts['bodies'], clrs):
-    pc.set_facecolor(color)
-    pc.set_alpha(0.8)
-for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
-    vp = parts[partname]
-    vp.set_edgecolor("k")
-    vp.set_linewidth(1)
-ax.vlines(pos, np.log10(np.array([q25_DR, q25_BR])*(3600*24*365)), 
-          np.log10(np.array([q75_DR, q75_BR])*(3600*24*365)), color='k', linestyle='-', lw=5)
-ax.set_ylim((-10,-2))
-ax.set_xticks(pos)
-ax.set_xticklabels(label)
-ax.set_ylabel(r'$\log_{10}(K_{sp} \,\, (1/yr))$')
-ax.set_title('Total Erodibility')
+    fig, ax = plt.subplots(figsize=(4,5))
+    parts = ax.violinplot(K, pos, vert=True, showmeans=False, showmedians=True,
+            showextrema=True)
+    for pc, color in zip(parts['bodies'], clrs):
+        pc.set_facecolor(color)
+        pc.set_alpha(0.8)
+    for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+        vp = parts[partname]
+        vp.set_edgecolor("k")
+        vp.set_linewidth(1)
+    ax.vlines(pos, np.log10(np.array([q25_DR, q25_BR])*(3600*24*365)), 
+            np.log10(np.array([q75_DR, q75_BR])*(3600*24*365)), color='k', linestyle='-', lw=5)
+    ax.set_ylim((-10,-2))
+    ax.set_xticks(pos)
+    ax.set_xticklabels(label)
+    ax.set_ylabel(r'$\log_{10}(K_{sp} \,\, (1/yr))$')
+    ax.set_title('Total Erodibility')
 
-plt.show()
-fig.tight_layout()
-# plt.savefig(figpath + 'Ksp_violinplot.png', dpi=300)
+    plt.show()
+    fig.tight_layout()
+    plt.savefig(figpath + 'Ksp_violinplot.png', dpi=300)
 
 
 #%% Violin plot - steepness ksn and erodibility K
 
-pos   = [1, 2]
-label = ['Druids Run', 'Baisman Run']
-clrs = ['firebrick', 'royalblue']
+if make_figures:
+    pos   = [1, 2]
+    label = ['Druids Run', 'Baisman Run']
+    clrs = ['firebrick', 'royalblue']
 
-Qm = df_params['Qstar_max'].values #[0.6,0.3] # 
-K = [np.log10(Ksp_DR*(3600*24*365)/Qm[0]), np.log10(Ksp_BR*(3600*24*365)/Qm[1])]
-ksn = [np.log10(ksn_DR), np.log10(ksn_BR)]
-# ksn = [ksn_DR, ksn_BR]
+    Qm = df_params['Qstar_max'].values #[0.6,0.3] # 
+    K = [np.log10(Ksp_DR*(3600*24*365)/Qm[0]), np.log10(Ksp_BR*(3600*24*365)/Qm[1])]
+    ksn = [np.log10(ksn_DR), np.log10(ksn_BR)]
+    # ksn = [ksn_DR, ksn_BR]
 
 
-fig, axs = plt.subplots(ncols=2, figsize=(6,3.5))
-parts = axs[0].violinplot(ksn, pos, vert=True, showmeans=False, showmedians=True,
-        showextrema=True)
-for pc, color in zip(parts['bodies'], clrs):
-    pc.set_facecolor(color)
-    pc.set_alpha(0.8)
-for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
-    vp = parts[partname]
-    vp.set_edgecolor("k")
-    vp.set_linewidth(1)
-DRq1, DRmed, DRq3 = np.percentile(ksn_DR, [25, 50, 75])
-BRq1, BRmed, BRq3 = np.percentile(ksn_BR, [25, 50, 75])
-dfksn = pd.DataFrame(data=[[DRq1, DRmed, DRq3, ksn_DR.mean()], [BRq1, BRmed, BRq3, ksn_BR.mean()]], 
-                    columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
-dfksn.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_ksn_stats.csv')
-axs[0].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
-# axs[0].vlines(pos, np.array([DRq1, BRq1]), np.array([DRq3, BRq3]), color='k', linestyle='-', lw=5)
-# axs[0].set_ylim((-8,0))
-axs[0].set_xticks(pos)
-axs[0].set_xticklabels(label)
-axs[0].set_ylabel(r'$log_{10} (k_{sn})$ (-)')
-axs[0].set_title('Steepness index')
+    fig, axs = plt.subplots(ncols=2, figsize=(6,3.5))
+    parts = axs[0].violinplot(ksn, pos, vert=True, showmeans=False, showmedians=True,
+            showextrema=True)
+    for pc, color in zip(parts['bodies'], clrs):
+        pc.set_facecolor(color)
+        pc.set_alpha(0.8)
+    for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+        vp = parts[partname]
+        vp.set_edgecolor("k")
+        vp.set_linewidth(1)
+    DRq1, DRmed, DRq3 = np.percentile(ksn_DR, [25, 50, 75])
+    BRq1, BRmed, BRq3 = np.percentile(ksn_BR, [25, 50, 75])
+    dfksn = pd.DataFrame(data=[[DRq1, DRmed, DRq3, ksn_DR.mean()], [BRq1, BRmed, BRq3, ksn_BR.mean()]], 
+                        columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
+    dfksn.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_ksn_stats.csv')
+    axs[0].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
+    # axs[0].vlines(pos, np.array([DRq1, BRq1]), np.array([DRq3, BRq3]), color='k', linestyle='-', lw=5)
+    # axs[0].set_ylim((-8,0))
+    axs[0].set_xticks(pos)
+    axs[0].set_xticklabels(label)
+    axs[0].set_ylabel(r'$log_{10} (k_{sn})$ (-)')
+    axs[0].set_title('Steepness index')
 
-parts = axs[1].violinplot(K, pos, vert=True, showmeans=False, showmedians=True,
-        showextrema=True)
-for pc, color in zip(parts['bodies'], clrs):
-    pc.set_facecolor(color)
-    pc.set_alpha(0.8)
-for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
-    vp = parts[partname]
-    vp.set_edgecolor("k")
-    vp.set_linewidth(1)
-DRq1, DRmed, DRq3 = np.percentile(Ksp_DR*(3600*24*365)/Qm[0], [25, 50, 75])
-BRq1, BRmed, BRq3 = np.percentile(Ksp_BR*(3600*24*365)/Qm[1], [25, 50, 75])
-dfK = pd.DataFrame(data=[[DRq1, DRmed, DRq3], [BRq1, BRmed, BRq3]], 
-                    columns=['q25','q50','q75'], index=['DR','BR'])
-dfK.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_K_stats.csv')
-axs[1].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
-axs[1].set_ylim((-9.5,-3))
-axs[1].set_xticks(pos)
-axs[1].set_xticklabels(label)
-axs[1].set_ylabel(r'$\log_{10}(K)$ (1/yr)')
-axs[1].set_title('Incision coefficient')
-plt.show()
-fig.tight_layout()
-plt.savefig(figpath + 'ksn_K_violinplot.png', dpi=300, transparent=True)
-plt.savefig(figpath + 'ksn_K_violinplot.pdf', transparent=True)
+    parts = axs[1].violinplot(K, pos, vert=True, showmeans=False, showmedians=True,
+            showextrema=True)
+    for pc, color in zip(parts['bodies'], clrs):
+        pc.set_facecolor(color)
+        pc.set_alpha(0.8)
+    for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+        vp = parts[partname]
+        vp.set_edgecolor("k")
+        vp.set_linewidth(1)
+    DRq1, DRmed, DRq3 = np.percentile(Ksp_DR*(3600*24*365)/Qm[0], [25, 50, 75])
+    BRq1, BRmed, BRq3 = np.percentile(Ksp_BR*(3600*24*365)/Qm[1], [25, 50, 75])
+    dfK = pd.DataFrame(data=[[DRq1, DRmed, DRq3], [BRq1, BRmed, BRq3]], 
+                        columns=['q25','q50','q75'], index=['DR','BR'])
+    dfK.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_K_stats.csv')
+    axs[1].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
+    axs[1].set_ylim((-9.5,-3))
+    axs[1].set_xticks(pos)
+    axs[1].set_xticklabels(label)
+    axs[1].set_ylabel(r'$\log_{10}(K)$ (1/yr)')
+    axs[1].set_title('Incision coefficient')
+    plt.show()
+    fig.tight_layout()
+    plt.savefig(figpath + 'ksn_K_violinplot.png', dpi=300, transparent=True)
+    plt.savefig(figpath + 'ksn_K_violinplot.pdf', transparent=True)
 
 # %% precipitation
 
@@ -329,14 +335,15 @@ df_P = pickle.load(open(path,"rb"))
 
 storm_depths, storm_durs, interstorm_durs = get_event_interevent_arrays(df_P, 'Precip mm/hr')
 
-# fig, axs = plt.subplots(ncols=3)
-# axs[0].hist(storm_depths, bins=25, density=True)
-# axs[0].set_xlabel('storm depth (mm)')
-# axs[1].hist(storm_durs, bins=25, density=True)
-# axs[1].set_xlabel('storm duration (hr)')
-# axs[2].hist(interstorm_durs, bins=25, density=True)
-# axs[2].set_xlabel('interstorm duration (hr)')
-# plt.show()
+if make_figures:
+    fig, axs = plt.subplots(ncols=3)
+    axs[0].hist(storm_depths, bins=25, density=True)
+    axs[0].set_xlabel('storm depth (mm)')
+    axs[1].hist(storm_durs, bins=25, density=True)
+    axs[1].set_xlabel('storm duration (hr)')
+    axs[2].hist(interstorm_durs, bins=25, density=True)
+    axs[2].set_xlabel('interstorm duration (hr)')
+    plt.show()
 
 # simplest possible way of calculating event statistics. In reality, more work
 # could be put into fitting an exponential model
@@ -376,76 +383,13 @@ b_BR = b_soil + b_saprolite
 
 # transmissivity we calculated using the saturation survey data
 dfT_BR = pd.read_csv(figpath+'transmissivity_BR_logTIQ_5.csv')
-ksat_BR = (dfT_BR['Trans. med [m2/d]'][0]/(24*3600))/b_BR  #m/s
+# ksat_BR = (dfT_BR['Trans. med [m2/d]'][0]/(24*3600))/b_BR  #m/s
+
+# test a case where transmissivity at BR half of what we found
+ksat_BR = (0.5*dfT_BR['Trans. med [m2/d]'][0]/(24*3600))/b_BR  #m/s
 
 df_params['ksat'] = [ksat_DR, ksat_BR]
 df_params['b'] = [b_DR, b_BR]
-
-# %% permeable thickness and hydralic conductivity
-"""
-# for Druids Run, we will just take the weighted mean of the survey data,
-# because bedrock is within the depth they report in ~97% of the watershed
-df_DR_depth = pd.read_csv(path_DR+'SoilSurvey/Bedrock_depth.csv')
-b_DR = calc_weighted_avg(df_DR_depth, 'Rating (centimeters) ') / 100 # meters
-
-# this is the depth-integrated ksat from the soil survey.
-# [Depth to bedrock] * [depth integrated ksat] = transmissivity (I think).
-df_DR_ksat = pd.read_csv(path_DR+'SoilSurvey/Ksat_avg.csv')
-ksat_DR = calc_weighted_avg(df_DR_ksat, 'Rating (micrometers\nper second)') * 1e-6 # m/s
-
-
-# for DR, select the dominant soil type, chrome silt loam. All slope classes (CeB, CeC, CeD)
-# have the same values, so aggregate them together. There's a permeability contrast at the A
-# horizon so we'll focus on flow above that layer
-df_DR_soil = pd.read_csv(path_DR+'SoilSurvey/SoilHydraulicProperties_DR.csv')
-df_DR_soil = df_DR_soil[df_DR_soil['musym'].isin(['CeB', 'CeC', 'CeD'])]
-df_grouped = df_DR_soil.groupby('desgnmaster').mean()
-# ksat_DR = df_grouped.loc['A']['ksat_r'] * 1e-6 
-# b_DR = df_grouped.loc['A']['hzdepb_r'] * 0.0254
-
-ksat_DR = df_grouped.loc['A']['ksat_h'] * 1e-6 
-b_DR = df_grouped.loc['A']['hzdepb_h'] * 0.0254
-
-
-# for Baisman Run, soil survey data is too shallow, so we will have to do
-# some of our own estimates. Here I'm assuming soil goes to the maximum depth reported.
-# this is likely not quite true - would be better to talk to Cassie or get the actual
-# horizon depths from the survey
-df_BR_depth = pd.read_csv(path_BR+'SoilSurvey/Bedrock_depth.csv')
-b_soil = calc_weighted_avg(df_BR_depth, 'Rating (centimeters) ') / 100 # meters
-b_saprolite = 2 # meters. An estimate for average thickness
-b_BR = b_soil + b_saprolite
-
-
-# we will also take the depth-integrated Ksat as the soil Ksat
-df_BR_ksat = pd.read_csv(path_BR+'SoilSurvey/Ksat_avg.csv')
-ksat_soil = calc_weighted_avg(df_BR_ksat, 'Rating (micrometers\nper second)') * 1e-6 # m/s
-# ksat_soil = 9.0e-6 #m/s and estimate from soil survey
-ksat_saprolite = 0.27 * 0.01 * (1/3600) # m/s from Vepraskas et al 1991 (geometric mean of ksat for mica schist saprolite)
-ksat_BR = (ksat_soil*b_soil + ksat_saprolite*b_saprolite)/b_BR
-
-
-# it's a little more complicated to use the full dataset at BR. This is unfinished, but the idea is to 
-# aggregate by soil horizon and area covered, using just the A and B horizons,
-# and then add the saprolite using a separate value. 
-
-df_BR_soil = pd.read_csv(path_BR+'SoilSurvey/SoilHydraulicProperties_BR.csv')
-df_BR_soil = df_BR_soil.drop(df_BR_soil[df_BR_soil['desgnmaster'].isin(['C', 'R'])].index)
-df_BR_soil['thick_r'] = df_BR_soil['hzdepb_r'] - df_BR_soil['hzdept_r']
-
-df_AOI = df_BR_bulk[['Map unit symbol ', 'Percent of AOI']]
-# df_AOI = df_AOI.rename(columns={'Map unit symbol ':'musym'})
-df_AOI['musym'] = df_AOI['Map unit symbol '].str.strip(' ')
-df_AOI['prop'] = 0.01 * df_AOI['Percent of AOI'].str.strip('%').astype(float)
-df_AOI.drop(columns=['Percent of AOI', 'Map unit symbol '], inplace=True)
-
-df_BR_soil = df_BR_soil.merge(df_AOI, how='outer', on='musym')
-
-
-df_params['ksat'] = [ksat_DR, ksat_BR]
-df_params['b'] = [b_DR, b_BR]
-
-"""
 
 # %% water contents: ne and na
 
@@ -526,34 +470,27 @@ df_params['phi'] = df_params['na']/df_params['ne']
 
 #%% Operational parameters 
 
-# Tg_nd = 2000 # total duration in units of tg [-]
 dtg_max_nd = 2e-3 # maximum geomorphic timestep in units of tg [-]
-# ksf_base = 500 # morphologic scaling factor
 Th_nd = 25 # hydrologic time in units of (tr+tb) [-]
 bin_capacity_nd = 0.05 # bin capacity as a proportion of mean storm depth
 
-df_params['Nx'] = 200 #400 #125 # number of grid cells width and height
+df_params['Nx'] = 300 #200 # number of grid cells width and height
 df_params['Nz'] = round((df_params['b']*df_params['na'])/(bin_capacity_nd*df_params['ds']))
-df_params['Tg'] = 5e7*(365*24*3600) # Tg_nd*df_params['tg'] # Total geomorphic simulation time [s] #5e6
-df_params['ksf'] = 5000 #ksf_base/df_params['beta'] # morphologic scaling factor
+df_params['Tg'] = 5e6*(365*24*3600) # 5e7 Tg_nd*df_params['tg'] # Total geomorphic simulation time [s] #5e6
+df_params['ksf'] = 5000 #morphologic scaling factor
 df_params['Th'] = Th_nd*(df_params['tr']+df_params['tb']) # hydrologic simulation time [s]
 df_params['dtg'] = df_params['ksf']*df_params['Th'] # geomorphic timestep [s]
 df_params['dtg_max'] = dtg_max_nd*df_params['tg'] # the maximum duration of a geomorphic substep [s]
-df_params['output_interval'] = 5000 #(10/(df_params['dtg']/df_params['tg'])).round().astype(int)
-df_params['BCs'] = '4414' # set all fixed value boundary conditions
+df_params['output_interval'] = 1000 #(10/(df_params['dtg']/df_params['tg'])).round().astype(int)
+df_params['BCs'] = '4414' # set boundary conditions
 
-# %%
+# %% set index
 
 df_params['label'] = df_params.index.values
 df_params.set_index(np.arange(len(df_params)), inplace=True)
 df_params.drop(columns=['label'], inplace=True)
 
-#%%
-
-folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
-# N = 24
-N = 2
-
+#%% create folders and save parameter files
 
 for i in df_params.index:
 
@@ -565,17 +502,3 @@ for i in df_params.index:
     df_params.loc[i].to_csv(outpath+'/parameters.csv', index=True)
 
     shutil.copyfile(__file__, outpath+'/ch3_model_parameters.py')
-
-
-# %% check parameters set 
-
-ID = 0
-task_id = '0'
-
-name = 'CaseStudy_%d-%d'%(N,ID)
-outpath = folder_path+name
-
-df_params1 = pd.read_csv(outpath+'/parameters.csv', index_col=0)[task_id]
-
-
-# %%

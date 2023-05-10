@@ -20,7 +20,7 @@ from mpl_point_clicker import clicker
 from generate_colormap import get_continuous_cmap
 
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
-base_output_path = 'CaseStudy_cross_2'
+base_output_path = 'CaseStudy_cross_1'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2
@@ -91,7 +91,8 @@ for i in plot_runs:
     x = np.arange(grid.shape[1] + 1) * dx - dx * 0.5
 
     # channels in model grid coordinates
-    name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
+    # name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
+    name_ch = "%s-%d_pad_AT_CN.csv"%(base_output_path, i)  # channels
     df = pd.read_csv('%s/%s/%s'%(directory, base_output_path, name_ch)) # channels
     projected_coords = ax_p.projection.transform_points(ccrs.Geodetic(), df['longitude'], df['latitude'])
     coords = projected_coords[:,0:2]
@@ -133,9 +134,8 @@ for i in plot_runs:
 axs[-1, 0].set_ylabel(r'$y$ (m)')
 axs[-1, 0].set_xlabel(r'$x$ (m)')
 
-# plt.subplots_adjust(left=0.15, bottom=0.15, right=None, top=None, wspace=0.15, hspace=0.15)
-plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+# plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+# plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% Saturation class
