@@ -4,7 +4,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib import cm, colors
+from matplotlib import colors
 
 from landlab import  RasterModelGrid
 import statsmodels.formula.api as smf
@@ -14,16 +14,6 @@ from landlab.components import (
     PrecipitationDistribution,
     )
 from DupuitLEM.auxiliary_models import HydrologyEventVadoseStreamPower, SchenkVadoseModel
-
-
-def equalObs(x, nbin):
-    """generate bins with equal number of observations
-        source: https://www.statology.org/equal-frequency-binning-python/"""
-    nlen = len(x)
-    return np.interp(np.linspace(0, nlen, nbin + 1),
-                     np.arange(nlen),
-                     np.sort(x))
-
 
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
 base_output_path = 'CaseStudy_cross_2'
@@ -37,8 +27,6 @@ grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, ID))
 elev = grid.at_node['topographic__elevation']
 wt_rel = grid.at_node['wtrel_mean_end_interstorm']
 TI8 = grid.at_node['topographic__index_D8']
-
-########## Run hydrological model
 
 Ks = df_params.loc['ksat'][0] #hydraulic conductivity [m/s]
 ne = df_params.loc['ne'][0] #drainable porosity [-]
@@ -56,11 +44,12 @@ Nz = df_params.loc['Nz'][0] #number of schenk bins [-]
 T_h = 100*(tr+tb) #total hydrological time [s]
 sat_cond = 0.025 # distance from surface (units of hg) for saturation
 
+# replace nans in elevation
 elev[np.isnan(elev)] = b
 
+#%% run hydrological model 
 
-#%%
-#initialize grid
+#initialize new grid
 mg = RasterModelGrid(grid.shape, xy_spacing=grid.dx)
 mg.set_status_at_node_on_edges(right=mg.BC_NODE_IS_CLOSED, top=mg.BC_NODE_IS_CLOSED, \
                               left=mg.BC_NODE_IS_FIXED_VALUE, bottom=mg.BC_NODE_IS_CLOSED)
@@ -97,7 +86,6 @@ hm = HydrologyEventVadoseStreamPower(
                                     vadose_model=svm,
                                     )
 
-#run model
 # hm.run_step()
 
 # f = open('../post_proc/%s/dt_qs_s_%d.csv'%(base_output_path, ID), 'w')
@@ -121,37 +109,23 @@ hm = HydrologyEventVadoseStreamPower(
 hm.run_step_record_state()
 # f.close()
 
-#%%
-#dataframe for output
+#%% dataframe for output
+
 df_output = {}
-#%% spatial runoff related quantities
+#%% get discharge and saturation for interstorms
 
-# effective Qstar
+# discharge
 Q_all = hm.Q_all[1:,:]/mg.at_node['drainage_area'] * 3600*24 #m/d
-dt = np.diff(hm.time)
 intensity = hm.intensity[:-1]
+Q_all = np.nanmax(Q_all[intensity==0.0,:], axis=1)
 
-# water table and saturation at end of storm and interstorm
+# saturation
 wt_all = hm.wt_all[1:,:]
 elev_all = np.ones(wt_all.shape)*mg.at_node['topographic__elevation']
 sat_all = (elev_all-wt_all) < sat_cond*hg
-
 sat_all = sat_all[intensity==0.0,:]
-Q_all = np.nanmax(Q_all[intensity==0.0,:], axis=1)
 
-
-#%% 
-
-# TI_sample = equalObs(TI8[TI8>0], 500) #np.geomspace(np.min(TI8[TI8>0]), max(TI8), 100)
-# binned = np.digitize(TI8, TI_sample)
-
-# np.random.seed(123)
-# inds = []
-# for i in range(len(TI_sample)):
-#     TI_inds = np.where(binned==i)[0]
-#     ind = np.random.choice(TI_inds)
-#     inds.append(ind)
-
+#%% extract transects for regression model
 
 all_inds = np.arange(200*200).reshape(mg.shape)
 n = np.arange(10,200,20)
@@ -160,9 +134,9 @@ xinds = list(all_inds[2:-2,n].flatten())
 yinds = list(all_inds[n,2:-2].flatten())
 inds = xinds + yinds
 
+# %% reshape and make dataframe
 
-# %%
-
+# get inds and reshape
 sat_obs = sat_all[:,inds]
 
 TI_all = TI8[inds]
@@ -172,18 +146,19 @@ TI_obs = TI_all.repeat(len(Q_all), axis=0)
 Q_all = Q_all.reshape(len(Q_all),1)
 Q_obs = Q_all.repeat(len(inds), axis=1)
 
-
 sat_obs = sat_obs.flatten()
 TI_obs = TI_obs.flatten()
 Q_obs = Q_obs.flatten()
 
+# make dataframe
 df_obs = pd.DataFrame({'sat_bin':sat_obs*1, 'logTI':np.log(TI_obs), 'logQ':np.log(Q_obs)})
 df_obs['logTIQ'] = df_obs['logTI'] + df_obs['logQ']
 
+# drop nans and infs
 df_obs.replace([np.inf, -np.inf], np.nan, inplace=True)
 df_obs.dropna(how='any', inplace=True) 
 
-# %%
+#%% regression model
 
 model = smf.logit('sat_bin ~ logTIQ', data=df_obs).fit()
 
@@ -193,8 +168,7 @@ print(model.summary())
 # predict in sample
 in_sample = pd.DataFrame({'prob':model.predict()})
 
-
-#%%
+#%% show model prediction with data
 
 logTIQ = np.linspace(-4,14,100)
 pred = model.predict(exog=dict(logTIQ=logTIQ))
@@ -204,17 +178,22 @@ fig, ax = plt.subplots()
 sc = ax.scatter(df_obs['logTIQ'], 
            df_obs['sat_bin'] + 0.05*np.random.randn(len(df_obs)), 
            c=np.exp(df_obs['logQ']),
-           s=3)
+           s=3,
+           rasterized=True)
 ax.plot(logTIQ, pred, 'r-')
 ax.set_yticks([0,1])
 ax.set_yticklabels(['N','Y'])
 ax.set_ylabel('Saturated')
 ax.set_xlabel('log(TIQ)')
 fig.colorbar(sc, label='Q (mm/d)')
+plt.savefig('%s/%s/TI_regression_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
+plt.savefig('%s/%s/TI_regression_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
+
+
 #%% calculate transmissivity: range of thresholds
 
 N = 200
-# p_all = np.linspace(0.2,0.7,N) #DR
+# p_all = np.linspace(0.55,0.99,N) #DR
 p_all = np.geomspace(0.001,0.7,N) #BR
 rhostar = lambda p: np.log(p/(1-p))
 Tmean = lambda b0, b1, p: np.exp((rhostar(p)-b0)/b1)
@@ -243,21 +222,21 @@ for i, p in enumerate(p_all):
 
     dist[i] = abs(sens[i]-(1-spec[i]))
 
-#%%
+#%% plot TPR-FPR and transmissivity
 
 s1 = 8
 s2 = (5,4)
 
 fig, ax = plt.subplots(figsize=s2)
-sc = ax.scatter(1-spec, sens, c=p_all, s=s1, vmin=0.0, vmax=0.7)
+sc = ax.scatter(1-spec, sens, c=p_all, s=s1, vmin=0.0, vmax=0.9)
 ax.axline([0,0], [1,1], color='k', linestyle='--', label='1:1')
 ax.set_xlabel('False Positive Ratio (FPR)')
 ax.set_ylabel('True Positive Ratio (TPR)')
 fig.colorbar(sc, label=r'$p^*$')
 ax.legend(frameon=False)
 fig.tight_layout()
-# plt.savefig(save_directory+'FPR_TPR_thresh_%s.png'%site, dpi=300, transparent=True)
-# plt.savefig(save_directory+'FPR_TPR_thresh_%s.pdf'%site, transparent=True)
+plt.savefig('%s/%s/FPR_TPR_thresh_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
+plt.savefig('%s/%s/FPR_TPR_thresh_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
 
 fig, ax = plt.subplots(figsize=s2)
 sc = ax.scatter(1-spec, sens, c=T_all[:,0], s=s1, cmap='plasma', norm=colors.LogNorm())
@@ -267,21 +246,21 @@ ax.set_ylabel('True Positive Ratio (TPR)')
 fig.colorbar(sc, label='Transmissivity')
 ax.legend(frameon=False)
 fig.tight_layout()
-# plt.savefig(save_directory+'FPR_TPR_trans_%s.png'%site, dpi=300, transparent=True)
-# plt.savefig(save_directory+'FPR_TPR_trans_%s.pdf'%site, transparent=True)
+plt.savefig('%s/%s/FPR_TPR_trans_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
+plt.savefig('%s/%s/FPR_TPR_trans_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
 
 fig, ax = plt.subplots(figsize=s2)
-sc = ax.scatter(T_all[:,0], dist, c=p_all, s=s1, vmin=0.0, vmax=0.7)
+sc = ax.scatter(T_all[:,0], dist, c=p_all, s=s1, vmin=0.0, vmax=0.9)
 # ax.plot(T_all[:,0], dist, 'k', linewidth=0.5, zorder=100)
 ax.set_xscale('log')
 ax.set_xlabel('Transmissivity')
 ax.set_ylabel('TPR-FPR')
 fig.colorbar(sc, label=r'$p^*$')
 fig.tight_layout()
-# plt.savefig(save_directory+'trans_dist_thresh_%s.png'%site, dpi=300, transparent=True)
-# plt.savefig(save_directory+'trans_dist_thresh_%s.pdf'%site, transparent=True)
+plt.savefig('%s/%s/trans_dist_thresh_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
+plt.savefig('%s/%s/trans_dist_thresh_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
 
-#%% select max and save
+#%% select max transmissivity and save
 
 i = np.argmax(dist)
 T_select = T_all[i,:]
@@ -296,9 +275,6 @@ dfT = pd.DataFrame({'Trans. med [m2/d]':T_select[0],
               'dist':dist[i]},
               index=[0]
               )
+dfT.to_csv(f'{directory}/{base_output_path}/transmissivity_{base_output_path}_logTIQ_{ID}.csv', float_format='%.3f')
 
-#%% plot predicted saturation
-
-Q_plot = hm.Q_all[1:,:]/mg.at_node['drainage_area'] * 3600*24 #m/d
-Q_plot = np.nanmax(Q_plot[intensity==0.0,:], axis=1)
-p = 0.5
+# %%
