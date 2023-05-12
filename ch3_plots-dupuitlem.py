@@ -20,7 +20,7 @@ from mpl_point_clicker import clicker
 from generate_colormap import get_continuous_cmap
 
 directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
-base_output_path = 'CaseStudy_cross_1'
+base_output_path = 'CaseStudy_cross_3'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2
@@ -67,7 +67,57 @@ plt.ylabel(r'$\bar{z}$')
 plt.tight_layout()
 plt.savefig('%s/%s/r_change.pdf'%(directory, base_output_path), transparent=True, dpi=300)
 
-#%% plot_runs hillshades
+
+#%% plot_runs hillshades 
+
+fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6,6)) #(8,6)
+for i in plot_runs:
+
+    m = np.where(plot_array==i)[0][0]
+    n = np.where(plot_array==i)[1][0]
+    
+    grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
+    # grid = read_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
+    elev = grid.at_node['topographic__elevation']
+    dx = grid.dx
+    y = np.arange(grid.shape[0] + 1) * dx - dx * 0.5
+    x = np.arange(grid.shape[1] + 1) * dx - dx * 0.5
+ 
+    ls = LightSource(azdeg=135, altdeg=45)
+    axs[m,n].imshow(
+                    ls.hillshade(elev.reshape(grid.shape).T, 
+                                vert_exag=1, 
+                                dx=dx, 
+                                dy=dx), 
+                    origin="lower", 
+                    extent=(x[0], x[-1], y[0], y[-1]), 
+                    cmap='gray',
+                    )
+    axs[m,n].text(0.04, 
+                0.95, 
+                df_params['label'][i], #i, #
+                transform=axs[m,n].transAxes, 
+                fontsize=12, 
+                verticalalignment='top',
+                color='k',
+                bbox=dict(ec='w',
+                          fc='w', 
+                          alpha=0.7,
+                          boxstyle="Square, pad=0.1",
+                          )
+                )   
+    if m != nrows-1:
+        axs[m, n].set_xticklabels([])
+    if n != 0:
+        axs[m, n].set_yticklabels([])
+    axs[m, n].set_xlim((x[0],x[-1]))
+    axs[m, n].set_ylim((y[0],y[-1]))
+
+axs[-1, 0].set_ylabel(r'$y$ (m)')
+axs[-1, 0].set_xlabel(r'$x$ (m)')
+
+
+#%% plot_runs hillshades with channels
 
 # channel network dummy figure
 fig_p = plt.figure(figsize=(9,7))
