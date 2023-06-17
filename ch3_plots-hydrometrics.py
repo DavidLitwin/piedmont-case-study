@@ -24,6 +24,23 @@ path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/"
 dfq_DR = pd.read_csv(path_DR+'df_qbp.csv', parse_dates=[0,7,8], index_col=0)
 dfq_BR = pd.read_csv(path_BR+'df_qbp.csv', parse_dates=[0,7,8], index_col=0)
 
+
+#%% runoff statistics
+
+p_DR = np.sum(dfq_DR['P (mm)'])*0.001
+q_DR = np.trapz(dfq_DR['Total runoff interp. [m^3 s^-1]'], dx=dfq_DR['dt [hour]'][0]*3600)/area_DR
+qb_DR = np.trapz(dfq_DR['Baseflow [m^3 s^-1]'], dx=dfq_DR['dt [hour]'][0]*3600)/area_DR
+
+p_BR = np.sum(dfq_BR['P (mm)'])*0.001
+q_BR = np.trapz(dfq_BR['Total runoff interp. [m^3 s^-1]'], dx=dfq_BR['dt [hour]'][0]*3600)/area_BR
+qb_BR = np.trapz(dfq_BR['Baseflow [m^3 s^-1]'], dx=dfq_BR['dt [hour]'][0]*3600)/area_BR
+
+data = [[p_DR, p_BR], [q_DR, q_BR], [qb_DR, qb_BR]]
+df_qstats = pd.DataFrame(data=data, columns=['DR', 'BR'], index=['P', 'Q', 'Qb'])
+df_qstats.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_qstats.csv', float_format="%.5f")
+
+
+
 # %% load precip
 
 dfp_DR = pd.read_csv(path_DR+'DruidRun_precip_15min_2022_4-2023_1.csv')

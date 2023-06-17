@@ -13,11 +13,13 @@ import dataretrieval.nwis as nwis
 import matplotlib.pyplot as plt
 from matplotlib import cm, colors, ticker
 
+from Hydrograph.hydrograph import sepBaseflow
+
 save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
 
 #%%
 
-site = 'DR'
+site = 'BR'
 res = 5
 
 if site=='DR' and res>=1:
@@ -124,6 +126,18 @@ for pts_path in paths:
     dfs.append(df)
 dfall = pd.concat(dfs, axis=0)
 
+# #%% import with baseflow
+
+# area_BR = 381e4 #m2
+# area_PB = 37e4 #m2
+# area_DR = 107e4 #m2
+# path_DR = "C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/"
+# path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/"
+# dfq_DR = pd.read_csv(path_DR+'df_qbp.csv', parse_dates=[0,7,8], index_col=0)
+# dfq_BR = pd.read_csv(path_BR+'df_qbp.csv', parse_dates=[0,7,8], index_col=0)
+# dfq_BR['Qb'] = dfq_BR['Baseflow [m^3 s^-1]'] * 3600 * 24 * (1/area_BR) * 1000
+# dfq_DR['Qb'] = dfq_DR['Baseflow [m^3 s^-1]'] * 3600 * 24 * (1/area_DR) * 1000
+
 # %% Druids Run: Load Q
 
 q_path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/'
@@ -191,6 +205,32 @@ dfq['date'] = dfq.index.date
 dfqug = dfqug_cont.loc[times]
 dfqug['date'] = dfqug.index.date
 
+#%% Baisman Baseflow
+
+area_BR = 381e4 #m2
+path_BR ="C:/Users/dgbli/Documents/Research/Oregon Ridge/data/USGS/Discharge_01583580_20220401.csv"
+dfq_cont = pd.read_csv(path_BR, header=14)
+
+dfq_cont['Total runoff [m^3 s^-1]'] = dfq_cont['Value']*0.3048**3 #m3/ft3 
+dfq_cont['Date'] = pd.to_datetime(dfq_cont['Timestamp (UTC-05:00)'], utc=True)
+dfq_cont.set_index('Date', inplace=True)
+dfq_cont = dfq_cont.filter(['Total runoff [m^3 s^-1]'])
+dfq_in = dfq_cont.resample('15min').mean()
+
+dfq_out = sepBaseflow(dfq_in, 15, area_BR*1e-6, k=0.000546, tp_min=4)
+
+#%%
+
+dfq_out['Q m/d'] = dfq_out['Baseflow [m^3 s^-1]'] * 3600 * 24 * (1/area_BR) * 1000
+dfq_cont = dfq_cont.filter(['Q m/d'])
+
+# get the start times of every saturation survey
+times = dfall.datetime_start.unique()
+times = [time.round('15min') for time in times]
+
+# isolate discharge at those times
+dfq = dfq_out.loc[times]
+dfq['date'] = dfq.index.date
 
 #%% Baisman run: process Q
 
@@ -595,28 +635,28 @@ in_sample = pd.DataFrame({'prob':model.predict()})
 
 #%% run TPR-FPR analysis
 
-# N = 1000
-# # p_all = np.linspace(0.2,0.8,N) #DR
-# p_all = np.linspace(0.05,0.8,N) #BR
+N = 1000
+# p_all = np.linspace(0.2,0.8,N) #DR
+p_all = np.linspace(0.05,0.8,N) #BR
 
-# sens = np.zeros(N)
-# spec = np.zeros(N)
-# dist = np.zeros(N)
+sens = np.zeros(N)
+spec = np.zeros(N)
+dist = np.zeros(N)
 
-# covs = model.cov_params()
-# means = model.params
+covs = model.cov_params()
+means = model.params
 
-# for i, p in enumerate(p_all):
+for i, p in enumerate(p_all):
 
-#     in_sample['pred_label'] = (in_sample['prob']>p).astype(int)
-#     cs = pd.crosstab(in_sample['pred_label'],dfnew['sat_bin'])
-#     sens[i] = cs[1][1]/(cs[1][1] + cs[1][0])
-#     spec[i] = cs[0][0]/(cs[0][0] + cs[0][1])
+    in_sample['pred_label'] = (in_sample['prob']>p).astype(int)
+    cs = pd.crosstab(in_sample['pred_label'],dfnew['sat_bin'])
+    sens[i] = cs[1][1]/(cs[1][1] + cs[1][0])
+    spec[i] = cs[0][0]/(cs[0][0] + cs[0][1])
 
-#     dist[i] = abs(sens[i]-(1-spec[i]))
+    dist[i] = abs(sens[i]-(1-spec[i]))
 
-# i = np.argmax(dist)
-# p_best = p_all[i]
+i = np.argmax(dist)
+p_best = p_all[i]
 
 #%% plot TPR-FPR 
 
@@ -706,6 +746,8 @@ plt.savefig(save_directory+f'pred_sat_ti_pdf_{site}_logTI_logQ_{res}.png', trans
 
 #%% derive sat class from regression
 
+
+
 p_best = 0.5 # set p by hand
 
 TI_plot = tif.read(1).astype(float)
@@ -734,7 +776,7 @@ vals, counts = np.unique(sat_class_plot[basin], return_counts=True)
 
 dfsat = pd.DataFrame(data=counts/len(sat_class_plot[basin]), 
                     index=['sat_never','sat_variable', 'sat_always'])
-dfsat.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_sat_%s.csv'%site)
+# dfsat.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_sat_%s.csv'%site)
 
 
 #%% plot classified saturated areas
@@ -780,8 +822,10 @@ ofs= 100 #50
 ax.set_xlim((Extent[0]+ofs, Extent[1]-ofs))
 ax.set_ylim((Extent[2]+ofs,Extent[3]-ofs))
 plt.axis('off')
-plt.savefig(save_directory+f'satclass_{site}_{res}.pdf', transparent=True)
-plt.savefig(save_directory+f'satclass_{site}_{res}.png', transparent=True)
+# plt.savefig(save_directory+f'satclass_{site}_{res}.pdf', transparent=True)
+# plt.savefig(save_directory+f'satclass_{site}_{res}.png', transparent=True)
+
+#%% ##### other stuff
 
 #%% calulate a transmissivity: logTI + logQ method
 
@@ -837,7 +881,7 @@ dfT = pd.DataFrame({'Trans. med [m2/d]':T_median,
               )
 dfT.to_csv(save_directory+'transmissivity_%s_logTI_logQ.csv'%site, float_format="%.3f")
 
-#%% ##### other stuff
+#%%
 
 # cumulative TI-sat
 norm = colors.Normalize(vmin=min(dfnew['Q']), vmax=max(dfnew['Q']))

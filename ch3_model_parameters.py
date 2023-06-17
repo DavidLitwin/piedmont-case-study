@@ -11,7 +11,7 @@ from scipy.stats import norm, truncnorm, ranksums
 from calc_storm_stats import get_event_interevent_arrays
 
 # make figures?
-make_figures = False
+make_figures = True
 
 # model suffix (CaseStudy_cross_N)
 N = 4 
@@ -173,7 +173,7 @@ if make_figures:
     axs[1].set_title('Hillslope Diffusivity')
     plt.show()
     fig.tight_layout()
-    plt.savefig(figpath+'Cht_D_violinplot.png', dpi=300, transparent=True)
+    plt.savefig(figpath+'Cht_D_violinplot.png', dpi=500, transparent=True)
     plt.savefig(figpath+'Cht_D_violinplot.pdf', transparent=True)
 
 
@@ -244,7 +244,7 @@ if make_figures:
     q25_DR, med_DR, q75_DR = np.percentile(Ksp_DR, [25, 50, 75])
     q25_BR, med_BR, q75_BR = np.percentile(Ksp_BR, [25, 50, 75])
 
-    fig, ax = plt.subplots(figsize=(4,5))
+    fig, ax = plt.subplots(figsize=(2.5,3.5))
     parts = ax.violinplot(K, pos, vert=True, showmeans=False, showmedians=True,
             showextrema=True)
     for pc, color in zip(parts['bodies'], clrs):
@@ -264,7 +264,7 @@ if make_figures:
 
     plt.show()
     fig.tight_layout()
-    plt.savefig(figpath + 'Ksp_violinplot.png', dpi=300)
+    plt.savefig(figpath + 'Ksp_violinplot.png', dpi=500)
 
 
 #%% Violin plot - steepness ksn and erodibility K
