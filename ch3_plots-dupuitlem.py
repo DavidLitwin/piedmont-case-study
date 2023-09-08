@@ -1,6 +1,7 @@
 
 #%%
 
+import os 
 import glob
 import numpy as np
 import pandas as pd
@@ -19,8 +20,9 @@ from landlab.io.netcdf import from_netcdf
 from mpl_point_clicker import clicker
 from generate_colormap import get_continuous_cmap
 
-directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
-base_output_path = 'CaseStudy_cross_3'
+# directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
+directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
+base_output_path = 'CaseStudy_cross_2'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2
@@ -334,25 +336,24 @@ df_sources.to_csv('%s/%s/%s-%d_EyeSources.csv'%(directory, base_output_path, bas
 
 #%% Hillslope length and relief: model 1
 
-path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
 
 files_ht = ["%s-%d_pad_HilltopData_TN.csv"%(base_output_path, i) for i in range(4)]
-df_ht_all = [pd.read_csv(path + file_ht) for file_ht in files_ht]
+df_ht_all = [pd.read_csv(os.path.join(directory,base_output_path,file_ht)) for file_ht in files_ht]
 names = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR'] # in order
 
 #%% Hillslope length and relief: model 2
 
-base_output_path_2 = 'CaseStudy_cross_2'
-path_2 = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path_2
-
+base_output_path_2 = 'CaseStudy_cross_1'
 files_ht_2 = ["%s-%d_pad_HilltopData_TN.csv"%(base_output_path_2, i) for i in range(4)]
-df_ht_all_2 = [pd.read_csv(path_2 + file_ht) for file_ht in files_ht_2]
+df_ht_all_2 = [pd.read_csv(os.path.join(directory,base_output_path_2,file_ht)) for file_ht in files_ht_2]
 names_2 = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR'] # in order
 
 #%% Hillslope length and relief: field
 
-path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
-path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+# path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
+# path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+path1 = '/Users/dlitwin/Documents/Research/Soldiers Delight/data/LSDTT/'
+path2 = '/Users/dlitwin/Documents/Research/Oregon Ridge/data/LSDTT/'
 
 name_ht_DR = "baltimore2015_DR1_HilltopData_TN.csv"
 name_ht_BR = "baltimore2015_BR_HilltopData_TN.csv"
@@ -392,8 +393,11 @@ alph = [0.8, 0.4, 0.4, 0.8, 0.4, 0.4]
 dfs = [ht_dict_plot[label] for label in labels]
 Lh = [df['Lh'].values for df in dfs]
 R = [df['R'].values for df in dfs]
+Cht = [np.log10(-df['Cht'][df['Cht']>-500].values) for df in dfs]
 
-#%%
+
+#%% hillslope length and relief violin plots 
+
 fig, axs = plt.subplots(ncols=2, figsize=(6,4))
 parts = axs[0].violinplot(Lh, pos, vert=True, showmeans=False, showmedians=True,
         showextrema=True)
@@ -443,6 +447,37 @@ plt.show()
 fig.tight_layout()
 plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
 plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+
+
+#%% hilltop curvature violin plot
+
+
+fig, axs = plt.subplots(figsize=(6,4))
+parts = axs.violinplot(Cht, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+
+q1s = [np.percentile(c, 25) for c in Cht]
+q3s = [np.percentile(c, 75) for c in Cht]
+meds = [np.percentile(c, 50) for c in Cht]
+axs.vlines(pos, q1s, q3s, color='k', linestyle='-', lw=3)
+axs.set_xticks(pos)
+axs.set_xticklabels(labels, rotation=45, ha='right')
+# axs.set_yscale('log')
+axs.set_ylabel('$log_{10}(-C_{ht})$ (1/m)')
+axs.set_title('Hilltop Curvature')
+plt.savefig('%s/%s/Cht_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/Cht_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+
+
+#%% Channels
+
 
 
 #%% scatter with errorbar
@@ -521,6 +556,29 @@ plt.tight_layout()
 plt.show()
 plt.savefig('%s/%s/Lh_R_scatter_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
 plt.savefig('%s/%s/Lh_R_scatter_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+
+
+#%% get hilltops and curvature
+
+
+i = 0
+name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
+name_hds = "%s-%d_EyeSources.csv"%(base_output_path, i) # channel heads
+name_rge = "%s-%d_pad_RidgeData.csv"%(base_output_path, i) # ridges h
+name_ht = "%s-%d_pad_HilltopData_TN.csv"%(base_output_path, i) # hilltopData
+
+df = pd.read_csv(os.path.join(directory,base_output_path, name_ch)) # channels
+df1 = pd.read_csv(os.path.join(directory,base_output_path, name_hds)) # channel heads
+df2 = pd.read_csv(os.path.join(directory,base_output_path, name_rge)) # ridges
+df3 = pd.read_csv(os.path.join(directory,base_output_path, name_ht)) # ridges
+
+
+#%%
+
+ind = df3['Cht'] > -500
+plt.figure()
+plt.hist(df3['Cht'][ind], bins=50)
+plt.axvline(x=df3['Cht'].median(), color='k')
 
 
 #%% ################ Old things ######################
