@@ -452,7 +452,7 @@ plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_ou
 #%% hilltop curvature violin plot
 
 
-fig, axs = plt.subplots(figsize=(6,4))
+fig, axs = plt.subplots(figsize=(4,4))
 parts = axs.violinplot(Cht, pos, vert=True, showmeans=False, showmedians=True,
         showextrema=True)
 for pc, color in zip(parts['bodies'], clrs):
@@ -472,6 +472,7 @@ axs.set_xticklabels(labels, rotation=45, ha='right')
 # axs.set_yscale('log')
 axs.set_ylabel('$log_{10}(-C_{ht})$ (1/m)')
 axs.set_title('Hilltop Curvature')
+fig.tight_layout()
 plt.savefig('%s/%s/Cht_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
 plt.savefig('%s/%s/Cht_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
