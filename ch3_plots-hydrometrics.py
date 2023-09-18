@@ -1,5 +1,6 @@
 #%%
 
+import os
 import numpy as np
 import pandas as pd
 from datetime import timedelta, date
@@ -16,8 +17,14 @@ area_BR = 381e4 #m2
 area_PB = 37e4 #m2
 area_DR = 107e4 #m2
 
-path_DR = "C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/"
-path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/"
+# path_DR = "C:/Users/dgbli/Documents/Research/Soldiers Delight/data_processed/"
+# path_BR = "C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/"
+
+path_DR = "/Users/dlitwin/Documents/Research/Soldiers Delight/data_processed/"
+path_BR = "/Users/dlitwin/Documents/Research/Oregon Ridge/data_processed/"
+
+# fig_path = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
+fig_path = '/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
 
 #%% if you want the data already made:
 
@@ -138,7 +145,7 @@ ax.set_xscale('log')
 ax.set_ylabel('Event Q (mm)')
 ax.set_xlabel('Event P (mm)')
 fig.colorbar(sc, label='Qb initial')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR_BR.png')
+plt.savefig(os.path.join(fig_path,'Event_RR_BR.png'))
 plt.show()
 
 #%%
@@ -173,8 +180,8 @@ ax1.scatter(dfe_BR['Precip ends'],
 ax1.set_ylim(2*P_plot.max(), 0)
 ax1.set_ylabel('$P$ (mm/hr)')
 fig.autofmt_xdate()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BR_Q_P.png', transparent=True)
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/BR_Q_P.pdf', transparent=True)
+plt.savefig(os.path.join(fig_path,'BR_Q_P.png'), transparent=True)
+plt.savefig(os.path.join(fig_path,'BR_Q_P.pdf'), transparent=True)
 
 # %% load Druids discharge
 
@@ -264,8 +271,8 @@ ax1.scatter(dfe_DR['Precip ends'],
 ax1.set_ylim(2*P_plot.max(), 0)
 ax1.set_ylabel('$P$ (mm/hr)')
 fig.autofmt_xdate()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DR_Q_P.png', transparent=True)
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DR_Q_P.pdf', transparent=True)
+# plt.savefig(os.path.join(fig_path,'DR_Q_P.png'), transparent=True)
+# plt.savefig(os.path.join(fig_path,'DR_Q_P.pdf'), transparent=True)
 
 #%% Event runoff ratio: Druids
 
@@ -301,7 +308,7 @@ axs[1].set_xscale('log')
 axs[1].set_ylabel('Event Q (mm)')
 axs[1].set_xlabel('Event P (mm)')
 axs[1].set_title('Druids Run')
-# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png')
+# plt.savefig(os.path.join(fig_path,'Event_RR.png'))
 plt.show()
 
 # %% regression for event runoff
@@ -382,8 +389,8 @@ axs[0].set_title('Druids Run')
 # cax = axs[1].inset_axes([1.04, 0.1, 0.05, 0.8])
 fig.colorbar(sc, ax=axs, label='Initial $Q_b$ (mm/d)')
 
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.png', transparent=True, dpi=300)
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR.pdf', transparent=True)
+plt.savefig(os.path.join(fig_path,'Event_RR.png'), transparent=True, dpi=300)
+plt.savefig(os.path.join(fig_path,'Event_RR.pdf'), transparent=True)
 
 df_rr_reg = pd.DataFrame(data=[[results_DR.params[1], results_DR.bse[1], results_DR.params[0], results_DR.bse[0], results_DR.rsquared],
                                [results_BR.params[1], results_BR.bse[1], results_BR.params[0], results_BR.bse[0], results_BR.rsquared]],
@@ -418,6 +425,82 @@ axs[1].set_title('Baisman Run')
 # axs[1].set_aspect(1)
 
 fig.colorbar(sc, label='Event Precipitation (mm)')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR_Q0.png', transparent=True)
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Event_RR_Q0.pdf', transparent=True)
-# %%
+plt.savefig(os.path.join(fig_path,'Event_RR_Q0.png'), transparent=True)
+plt.savefig(os.path.join(fig_path,'Event_RR_Q0.pdf'), transparent=True)
+
+# %% flow frequency analysis
+
+# get longer record for Pond Branch and Baisman Run
+site_BR = '01583580'
+site_PB = '01583570'
+
+dfq = nwis.get_record(sites=site_BR, service='iv', start='2013-01-01', end='2023-01-01')
+dfqug = nwis.get_record(sites=site_PB, service='iv', start='2013-01-01', end='2023-01-01')
+
+# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data_processed/'
+# dfq.to_csv(path+'dfq.csv')
+# dfqug.to_csv(path+'dfqug.csv')
+
+#%% Baisman run: process Q
+
+# area normalized discharge
+dfq['Total runoff [m^3 s^-1]'] = dfq['00060']*0.3048**3 #m3/ft3 
+dfq.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
+
+dfqug['Total runoff [m^3 s^-1]'] = dfqug['00060']*0.3048**3 #m3/ft3
+dfqug.drop(columns=['00060', 'site_no', '00065', '00065_cd'], inplace=True)
+
+# index from string to datetime
+dfq['Date'] = pd.to_datetime(dfq.index, utc=True)
+dfq.set_index('Date', inplace=True)
+
+dfqug['Date'] = pd.to_datetime(dfqug.index, utc=True)
+dfqug.set_index('Date', inplace=True)
+
+# %% baseflow separation
+
+dfq_in = dfqug.drop(columns='00060_cd')
+dfq_in = dfq_in.resample('15min').mean()
+
+dfq_PB = sepBaseflow(dfq_in, 15, area_PB*1e-6, k=0.000546, tp_min=4)
+
+#%% plot exceedance frequency
+
+
+dfq_PB['Q [mm/hr]'] = dfq_PB['Total runoff [m^3 s^-1]'] * (1/area_PB) * 3600 * 1000 # 1/m2 sec/hr mm/m
+dfq_PB['Qb [mm/hr]'] = dfq_PB['Baseflow [m^3 s^-1]'] * (1/area_PB) * 3600 * 1000 # 1/m2 sec/hr mm/m
+
+dfq_PB.dropna(inplace=True)
+l = len(dfq_PB['Q [mm/hr]'])
+exceedance_prob = np.arange(l)/(1+l)
+vals_Q = np.flip(np.sort(dfq_PB['Q [mm/hr]']))
+vals_Qb = np.flip(np.sort(dfq_PB['Qb [mm/hr]']))
+
+fig, ax = plt.subplots()
+ax.scatter(vals_Q, exceedance_prob, s=2, c='r', label=r'$Q$')
+ax.scatter(vals_Qb, exceedance_prob, s=2, c='b', label=r'$Q_b$')
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_xlabel('Q [mm/hr]')
+ax.set_ylabel('Exceedance Frequency')
+ax.legend(frameon=False)
+plt.savefig(os.path.join(fig_path,'Exceedance_PB.png'), transparent=True)
+plt.savefig(os.path.join(fig_path,'Exceedance_PB.pdf'), transparent=True)
+
+#%% plot exceedance frequency another way
+
+dfPB = dfqug.drop(columns='00060_cd')
+# dfPB = dfPB.interpolate(method='linear', limit=24)
+dfPB = dfPB.resample('1H').mean()
+dfPB = dfPB.dropna()
+dfPB['Q [mm/hr]'] = dfPB['Total runoff [m^3 s^-1]'] * 3600 * (1/area_PB) * 1000
+
+
+l = len(dfPB['Q [mm/hr]'])
+exceedance_prob = np.arange(l)/(1+l)
+vals = np.flip(np.sort(dfPB['Q [mm/hr]']))
+
+plt.figure()
+plt.scatter(vals, exceedance_prob, s=2)
+plt.xscale('log')
+plt.yscale('log')
