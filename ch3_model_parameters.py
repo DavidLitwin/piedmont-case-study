@@ -14,15 +14,18 @@ from calc_storm_stats import get_event_interevent_arrays
 make_figures = True
 
 # model suffix (CaseStudy_cross_N)
-N = 4 
+N = 5
+
+# Docs path
+path_docs = '/Users/dlitwin/Documents'
 
 # path to save things
-figpath = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
-folder_path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/CaseStudy/'
+figpath = os.path.join(path_docs, 'Papers/Ch3_oregon_ridge_soldiers_delight/figures/')
+folder_path = os.path.join(path_docs, 'Research Data/HPC output/DupuitLEMResults/CaseStudy/')
 
 # data paths for DR and BR
-path_DR = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/'
-path_BR = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/'
+path_DR = os.path.join(path_docs, 'Research/Soldiers Delight/data/')
+path_BR = os.path.join(path_docs, 'Research/Oregon Ridge/data/')
 
 def calc_weighted_avg(df, key):
     """calculate the weighted mean of a quantity from a Soil Survey dataframe.
@@ -42,9 +45,9 @@ def calc_weighted_avg(df, key):
 df_params = pd.DataFrame(index=['DR', 'BR'])
 #%% U: Uplift/Baselevel change rate
 
-path = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/'
+path_ch = os.path.join(path_docs, 'Papers/Ch3_oregon_ridge_soldiers_delight/')
 name = 'denudation_piedmont_portenga_2019_fig_4.csv'
-df_U = pd.read_csv(path+name) # (Mg km-2 yr-1)
+df_U = pd.read_csv(path_ch+name) # (Mg km-2 yr-1)
 df_U['U'] = df_U[' 10be_rate'] * 1e3 * 1e-6 * (1/2700) * 1/(365*24*3600) # kg/Mg * km2/m2 * m2/kg * yr/sec
 
 
@@ -77,15 +80,15 @@ U_gen = truncnorm.rvs(a, np.inf, loc=U_mean, scale=U_std, size=10000, random_sta
 # df_params['rho_ratio'] = [rho_serp/rho_DR, rho_schist/rho_BR]
 
 # load hilltop data
-path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
-path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+path1 = os.path.join(path_DR, 'LSDTT')
+path2 = os.path.join(path_BR, 'LSDTT')
 name_ht_DR = "baltimore2015_DR1_HilltopData_TN.csv"
 name_ht_BR = "baltimore2015_BR_HilltopData_TN.csv"
 
 # pick the right basin and remove some very negative outliers
-df_ht_DR = pd.read_csv(path1 + name_ht_DR)
+df_ht_DR = pd.read_csv(os.path.join(path1, name_ht_DR))
 df_ht_DR = df_ht_DR[df_ht_DR['BasinID']==99]
-df_ht_BR = pd.read_csv(path2 + name_ht_BR)
+df_ht_BR = pd.read_csv(os.path.join(path2, name_ht_BR))
 df_ht_BR = df_ht_BR[df_ht_BR['BasinID']==71]
 cBR = df_ht_BR['Cht'] > -1
 cDR = df_ht_DR['Cht'] > -1
@@ -146,7 +149,7 @@ if make_figures:
     BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Cht'][cBR], [25, 50, 75])
     dfCht = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Cht'][cDR].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Cht'][cBR].mean()]], 
                         columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
-    dfCht.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Cht_stats.csv', float_format="%.3e")
+    dfCht.to_csv(os.path.join(path_ch, 'df_Cht_stats.csv'), float_format="%.3e")
     axs[0].vlines(pos, np.log10(-np.array([DRq1, BRq1])), np.log10(-np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
     axs[0].set_ylim((-8,0))
     axs[0].set_xticks(pos)
@@ -180,12 +183,10 @@ if make_figures:
 # %% K, m, n: streampower coefficients
 
 # import from chi analysis
-path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
-path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
 name_chi_DR = "baltimore2015_DR1_0.5_MChiSegmented.csv"
 name_chi_BR = "baltimore2015_BR_0.5_MChiSegmented.csv"
-df_chi_DR = pd.read_csv(path1 + name_chi_DR)
-df_chi_BR = pd.read_csv(path2 + name_chi_BR)
+df_chi_DR = pd.read_csv(os.path.join(path1, name_chi_DR))
+df_chi_BR = pd.read_csv(os.path.join(path2, name_chi_BR))
 
 # choose steepness index of the segments with larger drainage areas, because 
 # this avoids headwaters where there should be more dependence on Q*
@@ -230,7 +231,7 @@ df_params['Qstar_max'] = [0.6,0.3] #0.3,0.3
 # calculate erodibility based on Qstar_max
 df_params['Ksp'] = df_Ksp['q50']
 df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
-df_params['v0'] = 5 #30 # 15 10 # window we averaged DEMs over to calculate most quantities
+df_params['v0'] = 10 #30 # 15 5 # window we averaged DEMs over to calculate most quantities
 
 #%% Violin plot - total erodibility
 
@@ -294,7 +295,7 @@ if make_figures:
     BRq1, BRmed, BRq3 = np.percentile(ksn_BR, [25, 50, 75])
     dfksn = pd.DataFrame(data=[[DRq1, DRmed, DRq3, ksn_DR.mean()], [BRq1, BRmed, BRq3, ksn_BR.mean()]], 
                         columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
-    dfksn.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_ksn_stats.csv')
+    dfksn.to_csv(os.path.join(path_ch+'df_ksn_stats.csv'))
     axs[0].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
     # axs[0].vlines(pos, np.array([DRq1, BRq1]), np.array([DRq3, BRq3]), color='k', linestyle='-', lw=5)
     # axs[0].set_ylim((-8,0))
@@ -316,7 +317,7 @@ if make_figures:
     BRq1, BRmed, BRq3 = np.percentile(Ksp_BR*(3600*24*365)/Qm[1], [25, 50, 75])
     dfK = pd.DataFrame(data=[[DRq1, DRmed, DRq3], [BRq1, BRmed, BRq3]], 
                         columns=['q25','q50','q75'], index=['DR','BR'])
-    dfK.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_K_stats.csv')
+    dfK.to_csv(os.path.join(path_ch+'df_K_stats.csv'))
     axs[1].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
     axs[1].set_ylim((-9.5,-3))
     axs[1].set_xticks(pos)
@@ -330,7 +331,7 @@ if make_figures:
 
 # %% precipitation
 
-path = "C:/Users/dgbli/Documents/Research/Transmissivity wetness/Data/BAIS/BAIS_PQ_hr.p"
+path = os.path.join(path_docs, "Research/Transmissivity wetness/Data/BAIS/BAIS_PQ_hr.p")
 df_P = pickle.load(open(path,"rb"))
 
 storm_depths, storm_durs, interstorm_durs = get_event_interevent_arrays(df_P, 'Precip mm/hr')
@@ -365,7 +366,7 @@ df_params['p'] = df_params['ds']/(df_params['tr'] + df_params['tb'])
 # horizon so we'll focus on flow above that layer
 df_DR_soil = pd.read_csv(path_DR+'SoilSurvey/SoilHydraulicProperties_DR.csv')
 df_DR_soil = df_DR_soil[df_DR_soil['musym'].isin(['CeB', 'CeC', 'CeD'])]
-df_grouped = df_DR_soil.groupby('desgnmaster').mean()
+df_grouped = df_DR_soil.groupby('desgnmaster').mean(numeric_only=True)
 b_DR = df_grouped.loc['A']['hzdepb_r'] * 0.0254 #m
 
 # transmissivity we calculated using the saturation survey data
@@ -470,14 +471,14 @@ df_params['phi'] = df_params['na']/df_params['ne']
 
 #%% Operational parameters 
 
-dtg_max_nd = 2e-3 # maximum geomorphic timestep in units of tg [-]
+dtg_max_nd = 1e-3 # maximum geomorphic timestep in units of tg [-]
 Th_nd = 25 # hydrologic time in units of (tr+tb) [-]
 bin_capacity_nd = 0.05 # bin capacity as a proportion of mean storm depth
 
 df_params['Nx'] = 300 #200 # number of grid cells width and height
 df_params['Nz'] = round((df_params['b']*df_params['na'])/(bin_capacity_nd*df_params['ds']))
-df_params['Tg'] = 5e6*(365*24*3600) # 5e7 Tg_nd*df_params['tg'] # Total geomorphic simulation time [s] #5e6
-df_params['ksf'] = 5000 #morphologic scaling factor
+df_params['Tg'] = 1e8*(365*24*3600) # 5e7 Tg_nd*df_params['tg'] # Total geomorphic simulation time [s] #5e6
+df_params['ksf'] = 25000 #morphologic scaling factor
 df_params['Th'] = Th_nd*(df_params['tr']+df_params['tb']) # hydrologic simulation time [s]
 df_params['dtg'] = df_params['ksf']*df_params['Th'] # geomorphic timestep [s]
 df_params['dtg_max'] = dtg_max_nd*df_params['tg'] # the maximum duration of a geomorphic substep [s]
@@ -502,3 +503,4 @@ for i in df_params.index:
     df_params.loc[i].to_csv(outpath+'/parameters.csv', index=True)
 
     shutil.copyfile(__file__, outpath+'/ch3_model_parameters.py')
+# %%
