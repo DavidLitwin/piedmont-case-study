@@ -33,7 +33,8 @@ def write_envi(filename, arr, dx, in_ds):
 
 #%% Read some existing files to get geotransform
 
-path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+# path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+path = '/Users/dlitwin/Documents/Research/Oregon Ridge/data/LSDTT/'
 name = 'baltimore2015_BR_hs.bil' # hillshade
 
 bais_arr, bais_ds = read_envi(path+name)
@@ -41,8 +42,9 @@ bais_arr, bais_ds = read_envi(path+name)
 #%% load landlab grids and export
 
 
-directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_2'
+# directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
+directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
+base_output_path = 'CaseStudy_cross_6'
 model_runs = np.arange(4)
 
 for i in model_runs:

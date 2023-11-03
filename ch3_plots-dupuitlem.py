@@ -22,7 +22,7 @@ from generate_colormap import get_continuous_cmap
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_2'
+base_output_path = 'CaseStudy_cross_6'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2
@@ -124,9 +124,8 @@ axs[-1, 0].set_xlabel(r'$x$ (m)')
 # channel network dummy figure
 fig_p = plt.figure(figsize=(9,7))
 ax_p = fig_p.add_subplot(1, 1, 1, projection=ccrs.UTM(18))
-path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
 name = '%s-%d_pad.bil'%(base_output_path, 0) 
-src = rd.open(path + name)
+src = rd.open(os.path.join(directory,base_output_path,name))
 bounds = src.bounds
 
 fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6,6)) #(8,6)
@@ -186,8 +185,8 @@ for i in plot_runs:
 axs[-1, 0].set_ylabel(r'$y$ (m)')
 axs[-1, 0].set_xlabel(r'$x$ (m)')
 
-# plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-# plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% Saturation class
@@ -248,7 +247,8 @@ plt.savefig('%s/%s/sat_zones_%s.pdf'%(directory, base_output_path, base_output_p
 #%% sat class compare
 
 # load predicted saturation from script
-path = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/'
+# path = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/'
+path = '/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/'
 DR_name, BR_name = 'df_sat_DR.csv', 'df_sat_BR.csv'
 
 df_1 = pd.read_csv(path+DR_name, names=['class', 'Druids Run'], header=0, index_col='class').T
@@ -298,12 +298,12 @@ plt.savefig('%s/%s/sat_compare_%s.pdf'%(directory, base_output_path, base_output
 #%% Hillshades (projected coordinates) - define channel network
 
 i = 3
-path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
+path = directory + f'/{base_output_path}/'
 name_elev = '%s-%d_pad.bil'%(base_output_path, i) # elevation
 src_elev = rd.open(path + name_elev) # elevation
-bounds = src.bounds
+bounds = src_elev.bounds
 Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
-proj = src.crs
+proj = src_elev.crs
 utm = 18
 
 fig = plt.figure(figsize=(9,7))
@@ -451,7 +451,6 @@ plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_ou
 
 #%% hilltop curvature violin plot
 
-
 fig, axs = plt.subplots(figsize=(4,4))
 parts = axs.violinplot(Cht, pos, vert=True, showmeans=False, showmedians=True,
         showextrema=True)
@@ -478,6 +477,93 @@ plt.savefig('%s/%s/Cht_violinplot_%s.pdf'%(directory, base_output_path, base_out
 
 
 #%% Channels
+
+# sites
+conc = 0.5
+name_chi_DR = "baltimore2015_DR1_%s_MChiSegmented.csv"%conc
+name_chi_BR = "baltimore2015_BR_%s_MChiSegmented.csv"%conc
+
+df_chi_DR = pd.read_csv(path1 + name_chi_DR)
+df_chi_BR = pd.read_csv(path2 + name_chi_BR)
+
+# Quant_DR = np.quantile(df_chi_DR['drainage_area'], 0.4)
+# Quant_BR = np.quantile(df_chi_BR['drainage_area'], 0.4)
+
+# df_chi_DR1 = df_chi_DR.loc[df_chi_DR['drainage_area']>Quant_DR]
+# df_chi_BR1 = df_chi_BR.loc[df_chi_BR['drainage_area']>Quant_BR]
+
+df_chi_sites = [df_chi_DR, df_chi_BR]
+names_sites = ['Druids Run', 'Baisman Run']
+
+# models
+files_chi = ["%s-%d_pad_MChiSegmented.csv"%(base_output_path, i) for i in range(4)]
+df_chi_all = [pd.read_csv(os.path.join(directory,base_output_path,file_chi)) for file_chi in files_chi]
+names = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR'] # in order
+
+# collect things for main model results
+names += names_sites
+df_chi_all += df_chi_sites
+chi_dict = dict(zip(names, df_chi_all))
+
+# %% Chi analysis visualization
+
+fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6,6)) #(8,6)
+for i in plot_runs:
+
+    m = np.where(plot_array==i)[0][0]
+    n = np.where(plot_array==i)[1][0]
+
+    df_chi = df_chi_all[i]
+    quant = np.quantile(df_chi['drainage_area'], 0.2)
+    df_chi1 = df_chi.loc[df_chi['drainage_area']>quant]
+
+    sc = axs[m,n].scatter(df_chi1['chi'], df_chi1['elevation'], c=df_chi1['m_chi'], s=3, zorder=99)
+    axs[m,n].scatter(df_chi['chi'], df_chi['elevation'], c='0.8', s=3, zorder=90)
+    axs[m,n].set_xlabel(r'$\chi$ (m)')
+    axs[m,n].set_ylabel('Elevation (m)')
+    axs[m,n].set_title(names[i])
+    plt.colorbar(sc, label=r'log$_{10}$( $k_{sn}$)', ax=axs[m,n])
+plt.tight_layout()
+plt.savefig('%s/%s/chi_elevation_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/chi_elevation_%s.png'%(directory, base_output_path, base_output_path), transparent=True)
+
+#%% violin plots of hillslope length and relief
+
+# select order and set some plot attributes
+labels = ['Druids Run', 'DR-DR', 'DR-BR', 'Baisman Run', 'BR-BR', 'BR-DR']
+clrs = ['firebrick', 'gray', 'gray', 'royalblue','gray', 'gray']
+pos   = [1, 2, 3, 4.5, 5.5, 6.5]
+alph = [0.8, 0.4, 0.4, 0.8, 0.4, 0.4]
+
+# get them in the right order and then get the values we want
+dfs = [chi_dict[label] for label in labels]
+ksn = [np.log10(df['m_chi'].values) for df in dfs]
+
+
+fig, axs = plt.subplots(figsize=(4,4))
+parts = axs.violinplot(ksn, pos, vert=True, showmeans=False, showmedians=True,
+        showextrema=True)
+for pc, color in zip(parts['bodies'], clrs):
+    pc.set_facecolor(color)
+    pc.set_alpha(0.8)
+for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
+    vp = parts[partname]
+    vp.set_edgecolor("k")
+    vp.set_linewidth(1)
+
+q1s = [np.percentile(c, 25) for c in ksn]
+q3s = [np.percentile(c, 75) for c in ksn]
+meds = [np.percentile(c, 50) for c in ksn]
+axs.vlines(pos, q1s, q3s, color='k', linestyle='-', lw=3)
+axs.set_xticks(pos)
+axs.set_xticklabels(labels, rotation=45, ha='right')
+# axs.set_yscale('log')
+axs.set_ylabel(r'log10 $k_{sn}$')
+axs.set_title('Channel Steepness')
+fig.tight_layout()
+plt.savefig('%s/%s/ksn_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/ksn_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+
 
 
 

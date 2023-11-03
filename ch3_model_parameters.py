@@ -11,10 +11,10 @@ from scipy.stats import norm, truncnorm, ranksums
 from calc_storm_stats import get_event_interevent_arrays
 
 # make figures?
-make_figures = True
+make_figures = False
 
 # model suffix (CaseStudy_cross_N)
-N = 5
+N = 6
 
 # Docs path
 path_docs = '/Users/dlitwin/Documents'
@@ -125,6 +125,8 @@ df_D = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]],
 df_params['D'] =  df_D['q50'] #df_D['q50'].mean()
 D_Stat = ranksums(D_DR, D_BR)
 
+df_params['Sc'] = 1.0
+
 #%% violin plot Cht and D
 
 if make_figures:
@@ -231,7 +233,7 @@ df_params['Qstar_max'] = [0.6,0.3] #0.3,0.3
 # calculate erodibility based on Qstar_max
 df_params['Ksp'] = df_Ksp['q50']
 df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
-df_params['v0'] = 10 #30 # 15 5 # window we averaged DEMs over to calculate most quantities
+df_params['v0'] = 20 #30 # 15 5 # window we averaged DEMs over to calculate most quantities
 
 #%% Violin plot - total erodibility
 
