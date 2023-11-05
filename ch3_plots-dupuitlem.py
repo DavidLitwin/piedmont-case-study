@@ -295,45 +295,6 @@ plt.show()
 plt.savefig('%s/%s/sat_compare_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
 plt.savefig('%s/%s/sat_compare_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
-#%% Hillshades (projected coordinates) - define channel network
-
-i = 3
-path = directory + f'/{base_output_path}/'
-name_elev = '%s-%d_pad.bil'%(base_output_path, i) # elevation
-src_elev = rd.open(path + name_elev) # elevation
-bounds = src_elev.bounds
-Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
-proj = src_elev.crs
-utm = 18
-
-fig = plt.figure(figsize=(9,7))
-ax = fig.add_subplot(1, 1, 1, projection=ccrs.UTM(utm))
-ls = LightSource(azdeg=135, altdeg=45)
-klicker = clicker(ax, ["source"], markers=["o"])
-ax.set_extent(Extent, crs=ccrs.UTM(utm))
-cs = ax.imshow(
-                ls.hillshade(src_elev.read(1), 
-                             vert_exag=1),
-                cmap='gray', 
-                #vmin=100,
-                extent=Extent, 
-                transform=ccrs.UTM(utm), 
-                origin="upper")
-plt.show()
-
-#%% get points, save output
-
-out = klicker.get_positions()
-pts_utm = out['source']
-geo = ccrs.Geodetic()
-pts_latlon = geo.transform_points(ccrs.UTM(utm), pts_utm[:,0], pts_utm[:,1])
-
-df_sources = pd.DataFrame({'x':pts_utm[:,0], 
-                        'y':pts_utm[:,1], 
-                        'latitude':pts_latlon[:,1], 
-                        'longitude':pts_latlon[:,0]})
-df_sources.to_csv('%s/%s/%s-%d_EyeSources.csv'%(directory, base_output_path, base_output_path, i))
-
 #%% Hillslope length and relief: model 1
 
 

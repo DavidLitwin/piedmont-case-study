@@ -44,8 +44,8 @@ bais_arr, bais_ds = read_envi(path+name)
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_6'
-model_runs = np.arange(4)
+base_output_path = 'Steady_sp_3_18' #'CaseStudy_cross_6'
+model_runs = np.arange(30)
 
 for i in model_runs:
     grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
