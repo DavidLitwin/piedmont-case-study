@@ -478,7 +478,7 @@ for i in plot_runs:
     quant = np.quantile(df_chi['drainage_area'], 0.2)
     df_chi1 = df_chi.loc[df_chi['drainage_area']>quant]
 
-    sc = axs[m,n].scatter(df_chi1['chi'], df_chi1['elevation'], c=df_chi1['m_chi'], s=3, zorder=99)
+    sc = axs[m,n].scatter(df_chi1['chi'], df_chi1['elevation'], c=np.log10(df_chi1['m_chi']), s=3, zorder=99)
     axs[m,n].scatter(df_chi['chi'], df_chi['elevation'], c='0.8', s=3, zorder=90)
     axs[m,n].set_xlabel(r'$\chi$ (m)')
     axs[m,n].set_ylabel('Elevation (m)')

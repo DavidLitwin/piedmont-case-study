@@ -54,7 +54,7 @@ K_all = []
 for i, ID in enumerate(model_runs):
 
     df_chi = df_chi_all[i]
-    quant = np.quantile(df_chi['drainage_area'], 0.2)
+    quant = np.quantile(df_chi['drainage_area'], 0.4)
     df_chi1 = df_chi.loc[df_chi['drainage_area']>quant]
 
     m_sp = 0.5
@@ -79,7 +79,7 @@ diff_all = []
 Lh_all = []
 for i, ID in enumerate(model_runs):
     df_chi = df_chi_all[i]
-    quant = np.quantile(df_chi['drainage_area'], 0.2)
+    quant = np.quantile(df_chi['drainage_area'], 0.4)
     df_chi1 = df_chi.loc[df_chi['drainage_area']>quant]
 
     m_sp = 0.5
@@ -88,8 +88,8 @@ for i, ID in enumerate(model_runs):
     U = df_params['U'].loc[ID]
 
     df_ht = df_ht_all[i]
-    Lh = df_ht['Lh'].median()
-    diff = 2*(Lh * U)/df_params['v0'].loc[ID]
+    Lh = df_ht['Lh'].mean()
+    diff = (Lh * U)/df_params['v0'].loc[ID]
 
     Ksp = (U+diff)/np.mean(df_chi1['m_chi'])**n_sp
     # Qstar = df_results['Q/P'].loc[ID]
@@ -108,8 +108,14 @@ Lh_all = np.array(Lh_all)
 
 tsc = 3600 * 24 * 365
 plt.figure()
-plt.scatter(df_params['K'].loc[model_runs]*tsc, K_all*tsc)
-plt.scatter(df_params['K'].loc[model_runs]*tsc, K_corr_all*tsc, c=Lh_all)
-plt.axline([0,0],[1e-6,1e-6], linestyle='--', color='k')
+sc = plt.scatter(df_params['K'].loc[model_runs]*tsc, K_all*tsc, c=Lh_all, marker='x', label='No Correction')
+plt.scatter(df_params['K'].loc[model_runs]*tsc, K_corr_all*tsc, c=Lh_all, label='Correction')
+plt.axline([1e-6,1e-6],[1e-4,1e-4], linestyle='--', color='k')
+plt.yscale('log')
+plt.xscale('log')
+plt.xlabel('K (actual) (1/m)')
+plt.ylabel('K (estimated) (1/m)')
+plt.colorbar(sc, label='Mean Hillslope Length (m)')
+plt.legend()
 
 # %%

@@ -48,18 +48,25 @@ def equalObs(x, nbin):
                      np.arange(nlen),
                      np.sort(x))
 
-figpath = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
-                     
+# figpath = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
+# path = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/'
+# path_DR = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
+# path_BR = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+
+figpath = '/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
+path = '/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/'
+path_DR = '/Users/dlitwin/Documents/Research/Soldiers Delight/data/LSDTT/'
+path_BR = '/Users/dlitwin/Documents/Research/Oregon Ridge/data/LSDTT/'
+
 #%%
 
-path = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/'
+
 name = 'denudation_piedmont_portenga_2019_fig_4.csv'
 df_U = pd.read_csv(path+name) # (Mg km-2 yr-1)
 df_U['U'] = df_U[' 10be_rate'] * 1e3 * 1e-6 * (1/2700)
 
 #%% Channels and Hillslopes  on hillshade (projected coordinate method)
 
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
 name = 'baltimore2015_DR1_hs.bil' # hillshade
 name_ch = "baltimore2015_DR1_D_CN.csv"  # channels
 name_hds = "baltimore2015_DR1_Dsources.csv" # channel heads
@@ -71,10 +78,10 @@ name_rge = "baltimore2015_DR1_RidgeData.csv" # ridges
 # name_hds = "baltimore2015_BR_Dsources.csv"
 # name_rge = "baltimore2015_BR_RidgeData.csv"
 
-src = rd.open(path + name) # hillshade
-df = pd.read_csv(path + name_ch) # channels
-df1 = pd.read_csv(path + name_hds) # channel heads
-df2 = pd.read_csv(path + name_rge) # ridges
+src = rd.open(path_DR + name) # hillshade
+df = pd.read_csv(path_DR + name_ch) # channels
+df1 = pd.read_csv(path_DR + name_hds) # channel heads
+df2 = pd.read_csv(path_DR + name_rge) # ridges
 
 bounds = src.bounds
 Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
@@ -83,11 +90,9 @@ utm = 18
 
 #%% get average elevations
 
-path_DR = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
 name_DR = 'baltimore2015_DR1.bil'
 basin_DR = 'baltimore2015_DR1_AllBasins.bil'
 
-path_BR = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
 name_BR = 'baltimore2015_BR.bil'
 basin_BR = 'baltimore2015_BR_AllBasins.bil'
 
@@ -144,8 +149,6 @@ plt.show()
 
 #%% Calculate kernel density of hillslope length and relief
 
-path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
-path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
 
 name_rge_DR = "baltimore2015_DR1_RidgeData.csv"
 name_rge_BR = "baltimore2015_BR_RidgeData.csv"
@@ -153,9 +156,9 @@ name_rge_BR = "baltimore2015_BR_RidgeData.csv"
 name_ht_DR = "baltimore2015_DR1_HilltopData_TN.csv"
 name_ht_BR = "baltimore2015_BR_HilltopData_TN.csv"
 
-df_ht_DR = pd.read_csv(path1 + name_ht_DR)
+df_ht_DR = pd.read_csv(path_DR + name_ht_DR)
 df_ht_DR = df_ht_DR[df_ht_DR['BasinID']==99]
-df_ht_BR = pd.read_csv(path2 + name_ht_BR)
+df_ht_BR = pd.read_csv(path_BR + name_ht_BR)
 df_ht_BR = df_ht_BR[df_ht_BR['BasinID']==71]
 
 #%% violin plots of hillslope length and relief
@@ -185,7 +188,7 @@ DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['Lh'].values, [25, 50, 75])
 BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Lh'].values, [25, 50, 75])
 dfLh = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Lh'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Lh'].mean()]], 
                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
-dfLh.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Lh_stats.csv', float_format="%.1f")
+dfLh.to_csv(path + 'df_Lh_stats.csv', float_format="%.1f")
 axs[0].vlines(pos, [DRq1, BRq1], [DRq3, BRq3], color='k', linestyle='-', lw=5)
 axs[0].set_ylim((-10,800))
 axs[0].set_xticks(pos)
@@ -206,7 +209,7 @@ DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['R'].values, [25, 50, 75])
 BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['R'].values, [25, 50, 75])
 dfR = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['R'].mean()], [BRq1, BRmed, BRq3, df_ht_BR['R'].mean()]], 
                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
-dfR.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Relief_stats.csv', float_format="%.1f")
+dfR.to_csv(path + 'df_Relief_stats.csv', float_format="%.1f")
 axs[1].vlines(pos, [DRq1, BRq1], [DRq3, BRq3], color='k', linestyle='-', lw=5)
 
 axs[1].set_xticks(pos)
@@ -243,7 +246,7 @@ DRq1, DRmed, DRq3 = np.percentile(df_ht_DR['Cht'][cDR], [25, 50, 75])
 BRq1, BRmed, BRq3 = np.percentile(df_ht_BR['Cht'][cBR], [25, 50, 75])
 dfCht = pd.DataFrame(data=[[DRq1, DRmed, DRq3, df_ht_DR['Cht'][cDR].mean()], [BRq1, BRmed, BRq3, df_ht_BR['Cht'][cBR].mean()]], 
                     columns=['q25','q50','q75', 'mean'], index=['DR','BR'])
-dfCht.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Cht_stats.csv', float_format="%.3e")
+dfCht.to_csv(path + 'df_Cht_stats.csv', float_format="%.3e")
 axs[0].vlines(pos, np.log10(-np.array([DRq1, BRq1])), np.log10(-np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
 # axs[0].set_ylim((-10,1200))
 axs[0].set_xticks(pos)
@@ -264,7 +267,7 @@ DRq1, DRmed, DRq3, DR95, DR99 = np.percentile(df_ht_DR['E_Star'][cDR], [25, 50, 
 BRq1, BRmed, BRq3, BR95, BR99 = np.percentile(df_ht_BR['E_Star'][cBR], [25, 50, 75, 95, 99])
 dfR = pd.DataFrame(data=[[DRmed, DR95, DR99, df_ht_DR['E_Star'][cDR].mean()], [BRmed, BR95, BR99, df_ht_BR['E_Star'][cBR].mean()]], 
                     columns=['q50','q95','q99', 'mean'], index=['DR','BR'])
-dfR.to_csv('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_estar_stats.csv', float_format="%.1f")
+dfR.to_csv(path + 'df_estar_stats.csv', float_format="%.1f")
 axs[1].vlines(pos, np.log10(np.array([DRq1, BRq1])), np.log10(np.array([DRq3, BRq3])), color='k', linestyle='-', lw=5)
 axs[1].axhline(y=0, linestyle='--', color='k', label='E*=1')
 axs[1].set_xticks(pos)
@@ -280,13 +283,12 @@ plt.savefig(figpath+'Cht_estar_violinplot.pdf')
 
 # Druids Run
 basin_name = 'baltimore2015_DR1_AllBasins.bil'
-bsn = rd.open(path + basin_name)
+bsn = rd.open(path_DR + basin_name)
 basin = bsn.read(1) > 0 
 
 # Baisman Run
-path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
 basin_name = 'baltimore2015_BR_AllBasins.bil'
-bsn = rd.open(path + basin_name)
+bsn = rd.open(path_BR + basin_name)
 basin = bsn.read(1) > 0 
 
 dx = bsn.transform[0]
@@ -306,17 +308,14 @@ plt.show()
 
 conc = '0.5'
 
-path1 = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
-path2 = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
-
 # name_chi_DR = "baltimore2015_DR1_chi_data_map.csv"
 # name_chi_BR = "baltimore2015_BR_chi_data_map.csv"
 
 name_chi_DR = "baltimore2015_DR1_%s_MChiSegmented.csv"%conc
 name_chi_BR = "baltimore2015_BR_%s_MChiSegmented.csv"%conc
 
-df_chi_DR = pd.read_csv(path1 + name_chi_DR)
-df_chi_BR = pd.read_csv(path2 + name_chi_BR)
+df_chi_DR = pd.read_csv(path_DR + name_chi_DR)
+df_chi_BR = pd.read_csv(path_BR + name_chi_BR)
 
 #%% chi-elevation for drainage area larger than threshold
 
@@ -330,22 +329,22 @@ df_chi_DR1 = df_chi_DR.loc[df_chi_DR['drainage_area']>Quant_DR]
 df_chi_BR1 = df_chi_BR.loc[df_chi_BR['drainage_area']>Quant_BR]
 
 fig, axs = plt.subplots(ncols=2, figsize=(7,3.5))
-sc = axs[0].scatter(df_chi_DR1['chi'], df_chi_DR1['elevation'], c=df_chi_DR1['m_chi'], s=3, zorder=99)
+sc = axs[0].scatter(df_chi_DR1['chi'], df_chi_DR1['elevation'], c=np.log10(df_chi_DR1['m_chi']), s=3, zorder=99)
 axs[0].scatter(df_chi_DR['chi'], df_chi_DR['elevation'], c='0.8', s=3, zorder=90)
 axs[0].set_xlabel(r'$\chi$ (m)')
 axs[0].set_ylabel('Elevation (m)')
 axs[0].set_title('Druids Run')
 plt.colorbar(sc, label=r'log$_{10}$( $k_{sn}$)', ax=axs[0])
 
-sc = axs[1].scatter(df_chi_BR1['chi'], df_chi_BR1['elevation'], c=df_chi_BR1['m_chi'], s=3, zorder=99)
+sc = axs[1].scatter(df_chi_BR1['chi'], df_chi_BR1['elevation'], c=np.log10(df_chi_BR1['m_chi']), s=3, zorder=99)
 axs[1].scatter(df_chi_BR['chi'], df_chi_BR['elevation'], c='0.8', s=3, zorder=90)
 axs[1].set_xlabel(r'$\chi$ (m)')
 axs[1].set_ylabel('Elevation (m)')
 axs[1].set_title('Baisman Run')
 plt.colorbar(sc, label=r'log$_{10}$( $k_{sn}$)', ax=axs[1])
 plt.tight_layout()
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_BR_DR_%s.png'%conc, dpi=300, transparent=True)
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/chi_BR_DR_%s.pdf'%conc, transparent=True)
+plt.savefig(figpath+'chi_BR_DR_%s.png'%conc, dpi=300, transparent=True)
+plt.savefig(figpath+'chi_BR_DR_%s.pdf'%conc, transparent=True)
 
 
 #%% flow distance-elevation plots 
@@ -400,15 +399,13 @@ fig.colorbar(sc, label=r'log10 $k_{sn}$')
 
 # %% map Ksn
 
-# path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
 # name = 'baltimore2015_DR1_hs.bil' # hillshade
 # df = df_chi_DR
+# src = rd.open(path_DR + name) # hillshade
 
-path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
 name = 'baltimore2015_BR_hs.bil'
 df = df_chi_BR
-
-src = rd.open(path + name) # hillshade
+src = rd.open(path_BR + name) # hillshade
 
 bounds = src.bounds
 Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
@@ -434,8 +431,8 @@ ax.set_extent(Extent, crs=ccrs.UTM(utm))
 ax.imshow(src.read(1), cmap='binary', vmin=100, #cmap='plasma', vmin=-0.1, vmax=0.1, #
                extent=Extent, transform=ccrs.UTM(utm), origin="upper")
 fig.colorbar(sc, label='log10 $k_{sn}$')
-# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DruidRun_ksn.png')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/OregonRidge_ksn.png')
+# plt.savefig(figpath+'DruidRun_ksn.png')
+plt.savefig(figpath+'OregonRidge_ksn.png')
 plt.show()
 
 
@@ -462,7 +459,7 @@ ax.imshow(src.read(1),
             transform=ccrs.UTM(utm), 
             origin="upper")
 fig.colorbar(sc, label='$\chi$')
-# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/DruidRun_chi.png')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/OregonRidge_chi.png')
+# plt.savefig(figpath+'DruidRun_chi.png')
+plt.savefig(figpath+'OregonRidge_chi.png')
 plt.show()
 # %%
