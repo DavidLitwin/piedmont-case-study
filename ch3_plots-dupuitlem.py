@@ -12,7 +12,6 @@ import cartopy.crs as ccrs
 
 from matplotlib import cm, colors, ticker
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
 from matplotlib.colors import LightSource
 from landlab.io.netcdf import from_netcdf
 # plt.rc('text', usetex=True)
@@ -22,7 +21,7 @@ from generate_colormap import get_continuous_cmap
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_6'
+base_output_path = 'CaseStudy_cross_7'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2
@@ -185,8 +184,8 @@ for i in plot_runs:
 axs[-1, 0].set_ylabel(r'$y$ (m)')
 axs[-1, 0].set_xlabel(r'$x$ (m)')
 
-plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+# plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+# plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% Saturation class
@@ -406,8 +405,8 @@ axs[1].set_title('Hillslope Relief')
 axs[1].set_ylabel('Height (m)')
 plt.show()
 fig.tight_layout()
-plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+# plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+# plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% hilltop curvature violin plot

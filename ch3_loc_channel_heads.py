@@ -6,6 +6,7 @@ Needs backend: %matplotlib qt6
 """
 
 #%%
+import os
 import numpy as np
 import pandas as pd
 
@@ -18,14 +19,17 @@ from mpl_point_clicker import clicker
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'steady_sp_3_18' #'CaseStudy_cross_6'
-i = 26
+base_output_path = 'steady_OCR_2' #'steady_sp_3_18' #'CaseStudy_cross_6'
+i = 1
 
 #%% Hillshades (projected coordinates) - define channel network
 
-path = directory + f'/{base_output_path}/'
-name_elev = '%s-%d_pad.bil'%(base_output_path, i) # elevation
-src_elev = rd.open(path + name_elev) # elevation
+# path = directory + f'/{base_output_path}/'
+# name_elev = '%s-%d_pad.bil'%(base_output_path, i) # elevation
+# src_elev = rd.open(path + name_elev) # elevation
+name_elev = '%s-%d.bil'%(base_output_path, i) # elevation
+path = os.path.join(directory,base_output_path,'lsdtt', name_elev)
+src_elev = rd.open(path) # elevation
 bounds = src_elev.bounds
 Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
 proj = src_elev.crs

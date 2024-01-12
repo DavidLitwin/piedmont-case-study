@@ -14,7 +14,7 @@ from calc_storm_stats import get_event_interevent_arrays
 make_figures = False
 
 # model suffix (CaseStudy_cross_N)
-N = 6
+N = 8
 
 # Docs path
 path_docs = '/Users/dlitwin/Documents'
@@ -125,7 +125,7 @@ df_D = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]],
 df_params['D'] =  df_D['q50'] #df_D['q50'].mean()
 D_Stat = ranksums(D_DR, D_BR)
 
-df_params['Sc'] = 1.0
+df_params['Sc'] = 0.0
 
 #%% violin plot Cht and D
 
@@ -230,10 +230,20 @@ Ksp_Stat = ranksums(Ksp_DR, Ksp_BR)
 # start by assuming that they are the same, then iterate based on the model results.
 df_params['Qstar_max'] = [0.6,0.3] #0.3,0.3
 
+
+# Lh for hillslope length correction
+lh_path = '/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Lh_stats.csv'
+df_Lh_stats = pd.read_csv(lh_path, index_col=0)
+
+r_path = '/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Relief_stats.csv'
+df_R_stats = pd.read_csv(r_path, index_col=0)
+
 # calculate erodibility based on Qstar_max
+df_params['v0'] = 15 # 30 5 # window we averaged DEMs over to calculate most quantities
 df_params['Ksp'] = df_Ksp['q50']
-df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
-df_params['v0'] = 20 #30 # 15 5 # window we averaged DEMs over to calculate most quantities
+# df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
+df_params['K'] = (df_params['Ksp']*(1+df_Lh_stats['q50']/df_params['v0']))/df_params['Qstar_max'] # scale with Q*, but also scale by hillslope length factor
+
 
 #%% Violin plot - total erodibility
 
@@ -386,10 +396,10 @@ b_BR = b_soil + b_saprolite
 
 # transmissivity we calculated using the saturation survey data
 dfT_BR = pd.read_csv(figpath+'transmissivity_BR_logTIQ_5.csv')
-# ksat_BR = (dfT_BR['Trans. med [m2/d]'][0]/(24*3600))/b_BR  #m/s
+ksat_BR = (dfT_BR['Trans. med [m2/d]'][0]/(24*3600))/b_BR  #m/s
 
 # test a case where transmissivity at BR half of what we found
-ksat_BR = (0.5*dfT_BR['Trans. med [m2/d]'][0]/(24*3600))/b_BR  #m/s
+# ksat_BR = (0.5*dfT_BR['Trans. med [m2/d]'][0]/(24*3600))/b_BR  #m/s
 
 df_params['ksat'] = [ksat_DR, ksat_BR]
 df_params['b'] = [b_DR, b_BR]
@@ -477,14 +487,14 @@ dtg_max_nd = 1e-3 # maximum geomorphic timestep in units of tg [-]
 Th_nd = 25 # hydrologic time in units of (tr+tb) [-]
 bin_capacity_nd = 0.05 # bin capacity as a proportion of mean storm depth
 
-df_params['Nx'] = 300 #200 # number of grid cells width and height
+df_params['Nx'] = 200 #300 # number of grid cells width and height
 df_params['Nz'] = round((df_params['b']*df_params['na'])/(bin_capacity_nd*df_params['ds']))
-df_params['Tg'] = 1e8*(365*24*3600) # 5e7 Tg_nd*df_params['tg'] # Total geomorphic simulation time [s] #5e6
-df_params['ksf'] = 25000 #morphologic scaling factor
+df_params['Tg'] = 5e7*(365*24*3600) # 5e7 Tg_nd*df_params['tg'] # Total geomorphic simulation time [s] #5e6
+df_params['ksf'] = 10000 #morphologic scaling factor
 df_params['Th'] = Th_nd*(df_params['tr']+df_params['tb']) # hydrologic simulation time [s]
 df_params['dtg'] = df_params['ksf']*df_params['Th'] # geomorphic timestep [s]
 df_params['dtg_max'] = dtg_max_nd*df_params['tg'] # the maximum duration of a geomorphic substep [s]
-df_params['output_interval'] = 1000 #(10/(df_params['dtg']/df_params['tg'])).round().astype(int)
+df_params['output_interval'] = 2000 #(10/(df_params['dtg']/df_params['tg'])).round().astype(int)
 df_params['BCs'] = '4414' # set boundary conditions
 
 # %% set index

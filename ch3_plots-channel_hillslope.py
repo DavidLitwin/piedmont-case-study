@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import rasterio as rd
 from sklearn.neighbors import KernelDensity
-from scipy.stats import norm, ranksums
+from scipy.stats import norm, ranksums, binned_statistic
 import statsmodels.api as sm
 
 import matplotlib.pyplot as plt
@@ -278,6 +278,27 @@ plt.show()
 fig.tight_layout()
 plt.savefig(figpath+'Cht_estar_violinplot.png')
 plt.savefig(figpath+'Cht_estar_violinplot.pdf')
+
+#%% plot correlation between Lh and Cht
+
+
+cht_binned_DR, lh_binned_DR, bin_no = binned_statistic(df_ht_DR['Lh'], df_ht_DR['Cht'], statistic='median', bins=np.quantile(df_ht_DR['Lh'], np.linspace(0,1,20)))
+cht_binned_BR, lh_binned_BR, bin_no = binned_statistic(df_ht_BR['Lh'], df_ht_BR['Cht'], statistic='median', bins=np.quantile(df_ht_BR['Lh'], np.linspace(0,1,20)))
+fig, axs = plt.subplots(ncols=2, figsize=(6,3))
+axs[0].scatter(df_ht_DR['Lh'], df_ht_DR['Cht'], alpha=0.05, s=3)
+axs[0].plot(np.diff(lh_binned_DR)/2+lh_binned_DR[:-1], cht_binned_DR, 'k--')
+axs[1].scatter(df_ht_BR['Lh'], df_ht_BR['Cht'], alpha=0.05, s=3)
+axs[1].plot(np.diff(lh_binned_BR)/2+lh_binned_BR[:-1], cht_binned_BR, 'k--')
+axs[0].set_ylim((-0.02, 0.001))
+axs[1].set_ylim((-0.02, 0.001))
+axs[0].set_ylabel(r'$C_{ht}$ (1/m)')
+axs[0].set_xlabel(r'$L_h$ (m)')
+axs[1].set_xlabel(r'$L_h$ (m)')
+axs[0].set_title('Druids Run')
+axs[1].set_title('Baisman Run')
+fig.tight_layout()
+plt.savefig(figpath+'Cht_Lh_scatter.png')
+plt.savefig(figpath+'Cht_Lh_scatter.pdf')
 
 # %% plot basin
 
