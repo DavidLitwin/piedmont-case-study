@@ -44,8 +44,8 @@ bais_arr, bais_ds = read_envi(path+name)
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'Steady_sp_3_18' #'CaseStudy_cross_6'
-model_runs = np.arange(30)
+base_output_path = 'CaseStudy_cross_2' #'Steady_sp_3_18' #
+model_runs = np.arange(4)
 
 for i in model_runs:
     grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
@@ -54,7 +54,9 @@ for i in model_runs:
     arr_0 = arr[1:-1, 1:-1]
     arr_1 = np.pad(arr_0, ((5,5),(0,5)), mode='symmetric')
     
-    write_envi('%s/%s/%s-%d_pad.bil'%(directory, base_output_path, base_output_path, i), 
+    # write_envi('%s/%s/%s-%d_pad.bil'%(directory, base_output_path, base_output_path, i), 
+    #            arr_1, grid.dx, bais_ds)
+    write_envi('%s/%s/lsdtt/%s-%d.bil'%(directory, base_output_path, base_output_path, i), 
                arr_1, grid.dx, bais_ds)
 
 

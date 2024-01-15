@@ -116,6 +116,8 @@ for i in plot_runs:
 
 axs[-1, 0].set_ylabel(r'$y$ (m)')
 axs[-1, 0].set_xlabel(r'$x$ (m)')
+plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% plot_runs hillshades with channels
@@ -141,8 +143,8 @@ for i in plot_runs:
     x = np.arange(grid.shape[1] + 1) * dx - dx * 0.5
 
     # channels in model grid coordinates
-    # name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
-    name_ch = "%s-%d_pad_AT_CN.csv"%(base_output_path, i)  # channels
+    name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
+    # name_ch = "%s-%d_pad_AT_CN.csv"%(base_output_path, i)  # channels
     df = pd.read_csv('%s/%s/%s'%(directory, base_output_path, name_ch)) # channels
     projected_coords = ax_p.projection.transform_points(ccrs.Geodetic(), df['longitude'], df['latitude'])
     coords = projected_coords[:,0:2]
@@ -608,16 +610,19 @@ plt.savefig('%s/%s/Lh_R_scatter_%s.pdf'%(directory, base_output_path, base_outpu
 #%% get hilltops and curvature
 
 
-i = 0
-name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
+i = 1
+name_chi = "%s-%d_MChiSegmented.csv"%(base_output_path, i)
+# name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
 name_hds = "%s-%d_EyeSources.csv"%(base_output_path, i) # channel heads
-name_rge = "%s-%d_pad_RidgeData.csv"%(base_output_path, i) # ridges h
-name_ht = "%s-%d_pad_HilltopData_TN.csv"%(base_output_path, i) # hilltopData
+# name_rge = "%s-%d_RidgeData.csv"%(base_output_path, i) # ridges h
+name_ht = "%s-%d_HilltopData_TN.csv"%(base_output_path, i) # hilltopData
 
-df = pd.read_csv(os.path.join(directory,base_output_path, name_ch)) # channels
-df1 = pd.read_csv(os.path.join(directory,base_output_path, name_hds)) # channel heads
-df2 = pd.read_csv(os.path.join(directory,base_output_path, name_rge)) # ridges
-df3 = pd.read_csv(os.path.join(directory,base_output_path, name_ht)) # ridges
+df = pd.read_csv(os.path.join(directory,base_output_path, 'lsdtt', name_chi)) # channels
+df1 = pd.read_csv(os.path.join(directory,base_output_path, 'lsdtt', name_hds)) # channel heads
+# df2 = pd.read_csv(os.path.join(directory,base_output_path, name_rge)) # ridges
+df3 = pd.read_csv(os.path.join(directory,base_output_path, 'lsdtt', name_ht)) # ridges
+
+
 
 
 #%%
@@ -745,20 +750,21 @@ axs2.legend(frameon=False)
 #%% Channels and Hillslopes on hillshade (projected coordinate method)
 
 i = 1
-path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/'%base_output_path
-name = '%s-%d_pad_hs.bil'%(base_output_path, i) # hillshade
+# path = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/lsdtt/'%base_output_path
+path = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/%s/lsdtt/'%base_output_path
+name = '%s-%d_hs.bil'%(base_output_path, i) # hillshade
 # name_ch = "%s-%d_pad_D_CN.csv"%(base_output_path, i)  # channels
 # name_hds = "%s-%d_pad_Dsources.csv"%(base_output_path, i) # channel heads
 # name_rge = "%s-%d_pad_RidgeData.csv"%(base_output_path, i) # ridges
 # name_ch = "%s-%d_pad_AT_CN.csv"%(base_output_path, i)  # channels
 # name_hds = "%s-%d_pad_ATsources.csv"%(base_output_path, i) # channel heads
 # name_rge = "%s-%d_pad_RidgeData.csv"%(base_output_path, i) # ridges
-name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
+name_ch = "%s-%d_FromCHF_CN.csv"%(base_output_path, i)  # channels
 name_hds = "%s-%d_EyeSources.csv"%(base_output_path, i) # channel heads
-name_rge = "%s-%d_pad_RidgeData.csv"%(base_output_path, i) # ridges
+name_rge = "%s-%d_RidgeData.csv"%(base_output_path, i) # ridges
 
 src = rd.open(path + name) # hillshade
-df = pd.read_csv(path + name_ch) # channels
+# df = pd.read_csv(path + name_ch) # channels
 df1 = pd.read_csv(path + name_hds) # channel heads
 df2 = pd.read_csv(path + name_rge) # ridges
 
@@ -775,8 +781,8 @@ fig = plt.figure(figsize=(9,7))
 ax = fig.add_subplot(1, 1, 1, projection=ccrs.UTM(utm))
 klicker = clicker(ax, ["source"], markers=["o"])
 
-projected_coords = ax.projection.transform_points(ccrs.Geodetic(), df['longitude'], df['latitude'])
-ax.scatter(projected_coords[:,0], projected_coords[:,1], s=0.5, c='b', transform=ccrs.UTM(utm)) #c=df['Stream Order'],
+# projected_coords = ax.projection.transform_points(ccrs.Geodetic(), df['longitude'], df['latitude'])
+# ax.scatter(projected_coords[:,0], projected_coords[:,1], s=0.5, c='b', transform=ccrs.UTM(utm)) #c=df['Stream Order'],
 
 projected_coords = ax.projection.transform_points(ccrs.Geodetic(), df1['longitude'], df1['latitude'])
 ax.scatter(projected_coords[:,0], projected_coords[:,1], s=3, c='r', transform=ccrs.UTM(utm)) #c=df['Stream Order'],
@@ -805,3 +811,43 @@ diff = src_fill.read(1) - src.read(1)
 
 plt.figure()
 plt.imshow(diff)
+
+
+#%% compare with and without correction
+
+
+# df_chi_BR
+# df_ht_BR
+
+i = 1
+bop = 'CaseStudy_cross_2'
+bop_corr = 'CaseStudy_Cross_7'
+
+name_chi = "%s-%d_MChiSegmented.csv"%(bop, i)
+name_ht = "%s-%d_HilltopData_TN.csv"%(bop, i) # hilltopData
+
+name_chi_corr = "%s-%d_MChiSegmented.csv"%(bop_corr, i)
+name_ht_corr = "%s-%d_HilltopData_TN.csv"%(bop_corr, i) # hilltopData
+
+df_chi = pd.read_csv(os.path.join(directory,bop, 'lsdtt', name_chi)) # channels
+df_ht = pd.read_csv(os.path.join(directory,bop, 'lsdtt', name_ht)) # ridges
+
+df_chi_corr = pd.read_csv(os.path.join(directory,bop_corr, 'lsdtt', name_chi_corr)) # channels
+df_ht_corr = pd.read_csv(os.path.join(directory,bop_corr, 'lsdtt', name_ht_corr)) # ridges
+
+
+Lh = [df_ht_BR['Lh'], df_ht['Lh'], df_ht_corr['Lh']]
+mchi = [df_chi_BR['m_chi'], df_chi['m_chi'], df_chi_corr['m_chi']]
+fig, axs = plt.subplots(ncols=2, figsize=(9,4))
+
+axs[0].violinplot(Lh, showmeans=False, showmedians=True)
+axs[1].violinplot(mchi, showmeans=False, showmedians=True)
+
+axs[0].set_xticks([1,2,3], labels=['Baisman Run', 'BR-BR', 'BR-BR corr'])
+axs[1].set_xticks([1,2,3], labels=['Baisman Run', 'BR-BR', 'BR-BR corr'])
+
+axs[0].set_ylabel('Lh (m)')
+axs[1].set_ylabel('m_chi (-)')
+axs[0].set_title('Hillslope Length')
+axs[1].set_title('Channel Steepness')
+# %%

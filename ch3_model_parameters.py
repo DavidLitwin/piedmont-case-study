@@ -125,7 +125,7 @@ df_D = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]],
 df_params['D'] =  df_D['q50'] #df_D['q50'].mean()
 D_Stat = ranksums(D_DR, D_BR)
 
-df_params['Sc'] = 0.0
+df_params['Sc'] = 1.0
 
 #%% violin plot Cht and D
 

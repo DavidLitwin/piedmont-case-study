@@ -8,6 +8,7 @@ from matplotlib import colors
 
 from landlab import  RasterModelGrid
 import statsmodels.formula.api as smf
+import statsmodels.api as sm 
 from landlab.io.netcdf import from_netcdf
 from landlab.components import (
     GroundwaterDupuitPercolator,
@@ -17,10 +18,11 @@ from DupuitLEM.auxiliary_models import HydrologyEventVadoseStreamPower, SchenkVa
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'stoch_gam_sigma_16' #'CaseStudy_cross_2'
-ID = 5
+base_output_path = 'stoch_gam_sigma_15' #'CaseStudy_cross_2'
+ID = 13
+#%%
 
-for ID in range(5,25):
+for ID in range(25):
 
     ##%% load parameters and grid
 
@@ -172,8 +174,8 @@ for ID in range(5,25):
     ax.set_ylabel('Saturated')
     ax.set_xlabel('log(TIQ)')
     fig.colorbar(sc, label='Q (mm/d)')
-    plt.savefig('%s/%s/TI_regression_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
-    plt.savefig('%s/%s/TI_regression_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
+    # plt.savefig('%s/%s/TI_regression_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
+    # plt.savefig('%s/%s/TI_regression_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
     # plt.close()
 
     ##%% calculate transmissivity: range of thresholds
@@ -224,8 +226,8 @@ for ID in range(5,25):
     fig.colorbar(sc, label=r'$p^*$')
     ax.legend(frameon=False)
     fig.tight_layout()
-    plt.savefig('%s/%s/FPR_TPR_thresh_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
-    plt.savefig('%s/%s/FPR_TPR_thresh_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
+    # plt.savefig('%s/%s/FPR_TPR_thresh_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
+    # plt.savefig('%s/%s/FPR_TPR_thresh_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
     # plt.close()
 
     fig, ax = plt.subplots(figsize=s2)
@@ -236,8 +238,8 @@ for ID in range(5,25):
     fig.colorbar(sc, label='Transmissivity')
     ax.legend(frameon=False)
     fig.tight_layout()
-    plt.savefig('%s/%s/FPR_TPR_trans_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
-    plt.savefig('%s/%s/FPR_TPR_trans_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
+    # plt.savefig('%s/%s/FPR_TPR_trans_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
+    # plt.savefig('%s/%s/FPR_TPR_trans_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
     # plt.close()
 
     fig, ax = plt.subplots(figsize=s2)
@@ -248,8 +250,8 @@ for ID in range(5,25):
     ax.set_ylabel('TPR-FPR')
     fig.colorbar(sc, label=r'$p^*$')
     fig.tight_layout()
-    plt.savefig('%s/%s/trans_dist_thresh_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
-    plt.savefig('%s/%s/trans_dist_thresh_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
+    # plt.savefig('%s/%s/trans_dist_thresh_%d.png'%(directory, base_output_path, ID), transparent=True, dpi=300)
+    # plt.savefig('%s/%s/trans_dist_thresh_%d.pdf'%(directory, base_output_path, ID), transparent=True, dpi=300)
     # plt.close()
 
     ##%% select max transmissivity and save
@@ -268,7 +270,7 @@ for ID in range(5,25):
                 index=[0]
                 )
     dfT['Actual Trans [m2/d]'] = df_params.loc['ksat'][0]*df_params.loc['b'][0] * 3600*24
-    dfT.to_csv(f'{directory}/{base_output_path}/transmissivity_{base_output_path}_logTIQ_{ID}.csv', float_format='%.3f')
+    # dfT.to_csv(f'{directory}/{base_output_path}/transmissivity_{base_output_path}_logTIQ_{ID}.csv', float_format='%.3f')
 
     print('Finished %d'%ID)
     ## %%
@@ -277,6 +279,7 @@ for ID in range(5,25):
 
 plt.figure()
 base_output_paths = ['stoch_gam_sigma_14', 'stoch_gam_sigma_15', 'stoch_gam_sigma_16']
+dfT_list = []
 for base_output_path in base_output_paths:
         
     model_runs = range(25)
@@ -285,10 +288,12 @@ for base_output_path in base_output_paths:
         try:
             df = pd.read_csv(f'{directory}/{base_output_path}/transmissivity_{base_output_path}_logTIQ_{ID}.csv')
         except FileNotFoundError:
-            df =  pd.DataFrame(columns=df.columns)
+            data = np.nan * np.zeros((1,len(df.columns)))          
+            df =  pd.DataFrame(columns=df.columns, data=data)
+            print(ID,base_output_path)
         dfs.append(df)
     dfT = pd.concat(dfs, axis=0, ignore_index=True)
-
+    dfT_list.append(dfT)
 
     plt.scatter(dfT['Actual Trans [m2/d]'], dfT['Trans. med [m2/d]'], alpha=0.5, label=base_output_path)
 plt.axline([0,0], slope=1.0, color='k', linestyle='--', label="1:1")
@@ -297,8 +302,58 @@ plt.ylabel('Predicted T (m2/d)')
 plt.xscale('log')
 plt.yscale('log')
 plt.legend()
-plt.savefig('/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Transmissivity_pred.png', transparent=True, dpi=300)
-plt.savefig('/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Transmissivity_pred.pdf', transparent=True, dpi=300)
+# plt.savefig('/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Transmissivity_pred.png', transparent=True, dpi=300)
+# plt.savefig('/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/Transmissivity_pred.pdf', transparent=True, dpi=300)
 plt.show()
+
+#%% Other various things 
+
+
+df_params_list = [pd.read_csv(f'{directory}/{base_output_path}/params.csv') for base_output_path in base_output_paths]
+df_params_all = pd.concat(df_params_list)
+df_results_list = [pd.read_csv(f'{directory}/{base_output_path}/results.csv') for base_output_path in base_output_paths]
+df_results_all = pd.concat(df_results_list)
+dfT_all = pd.concat(dfT_list)
+
+dfT_all['T naive'] = np.exp(-dfT_all['b0']/dfT_all['b1'])
+
+#%%
+
+f = np.log(df_params_all['hi'])
+# f = df_results_all['sat_entropy']
+plt.figure()
+# plt.scatter(dfT_all['Actual Trans [m2/d]'], dfT_all['Trans. med [m2/d]'], c=f, alpha=0.5)
+plt.scatter(dfT_all['Actual Trans [m2/d]'], dfT_all['T naive'], c=f)
+plt.axline([0,0], slope=1.0, color='k', linestyle='--', label="1:1")
+plt.xlabel('Actual T (m2/d)')
+plt.ylabel('Predicted T (m2/d)')
+plt.xscale('log')
+plt.yscale('log')
+plt.legend()
+
+#%%
+
+resid = dfT_all['Trans. med [m2/d]'] - dfT_all['Actual Trans [m2/d]']
+df_pall_log = np.log(df_params_all)
+df_pall_log['resid'] = resid
+df_pall_log.dropna(inplace=True)
+
+#%%
+
+X = df_pall_log[['gam', 'hi', 'sigma']] 
+y = df_pall_log['resid']
+## fit a OLS model with intercept on TV and Radio 
+X = sm.add_constant(X) 
+est = sm.OLS(y, X).fit() 
+pred = est.predict(X)
+est.summary()
+
+# %%
+
+ID = 12
+base_output_path = 'stoch_gam_sigma_14'
+df_params = pd.read_csv('%s/%s/params_ID_%d.csv'%(directory,base_output_path, ID), index_col=0)
+grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, ID))
+
 
 # %%
