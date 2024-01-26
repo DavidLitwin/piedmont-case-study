@@ -14,7 +14,7 @@ from calc_storm_stats import get_event_interevent_arrays
 make_figures = False
 
 # model suffix (CaseStudy_cross_N)
-N = 8
+N = 11
 
 # Docs path
 path_docs = '/Users/dlitwin/Documents'
@@ -239,10 +239,10 @@ r_path = '/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_R
 df_R_stats = pd.read_csv(r_path, index_col=0)
 
 # calculate erodibility based on Qstar_max
-df_params['v0'] = 15 # 30 5 # window we averaged DEMs over to calculate most quantities
+df_params['v0'] = 10 # 30 15 5 # window we averaged DEMs over to calculate most quantities
 df_params['Ksp'] = df_Ksp['q50']
-# df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
-df_params['K'] = (df_params['Ksp']*(1+df_Lh_stats['q50']/df_params['v0']))/df_params['Qstar_max'] # scale with Q*, but also scale by hillslope length factor
+df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
+# df_params['K'] = (df_params['Ksp']*(1+df_Lh_stats['q50']/df_params['v0']))/df_params['Qstar_max'] # scale with Q*, but also scale by hillslope length factor
 
 
 #%% Violin plot - total erodibility
@@ -379,7 +379,8 @@ df_params['p'] = df_params['ds']/(df_params['tr'] + df_params['tb'])
 df_DR_soil = pd.read_csv(path_DR+'SoilSurvey/SoilHydraulicProperties_DR.csv')
 df_DR_soil = df_DR_soil[df_DR_soil['musym'].isin(['CeB', 'CeC', 'CeD'])]
 df_grouped = df_DR_soil.groupby('desgnmaster').mean(numeric_only=True)
-b_DR = df_grouped.loc['A']['hzdepb_r'] * 0.0254 #m
+# b_DR = df_grouped.loc['A']['hzdepb_r'] * 0.0254 #m
+b_DR = 0.2 #m make this very small 
 
 # transmissivity we calculated using the saturation survey data
 dfT_DR = pd.read_csv(figpath+'transmissivity_DR_logTIQ_5.csv')

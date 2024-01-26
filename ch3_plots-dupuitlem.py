@@ -21,7 +21,8 @@ from generate_colormap import get_continuous_cmap
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_7'
+base_output_path = 'CaseStudy_cross_1'
+folder = 'lsdtt_1'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2
@@ -80,6 +81,7 @@ for i in plot_runs:
     grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
     # grid = read_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
     elev = grid.at_node['topographic__elevation']
+    elev[grid.closed_boundary_nodes] = np.nan
     dx = grid.dx
     y = np.arange(grid.shape[0] + 1) * dx - dx * 0.5
     x = np.arange(grid.shape[1] + 1) * dx - dx * 0.5
@@ -125,8 +127,9 @@ plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_p
 # channel network dummy figure
 fig_p = plt.figure(figsize=(9,7))
 ax_p = fig_p.add_subplot(1, 1, 1, projection=ccrs.UTM(18))
-name = '%s-%d_pad.bil'%(base_output_path, 0) 
-src = rd.open(os.path.join(directory,base_output_path,name))
+# name = '%s-%d_pad.bil'%(base_output_path, 0) 
+name = '%s-%d.bil'%(base_output_path, 0) 
+src = rd.open(os.path.join(directory,base_output_path,folder,name))
 bounds = src.bounds
 
 fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6,6)) #(8,6)
@@ -138,18 +141,21 @@ for i in plot_runs:
     grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
     # grid = read_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
     elev = grid.at_node['topographic__elevation']
+    elev[grid.closed_boundary_nodes] = np.nan
     dx = grid.dx
     y = np.arange(grid.shape[0] + 1) * dx - dx * 0.5
     x = np.arange(grid.shape[1] + 1) * dx - dx * 0.5
 
     # channels in model grid coordinates
-    name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
+    # name_ch = "%s-%d_pad_FromCHF_CN.csv"%(base_output_path, i)  # channels
+    name_ch = "%s-%d_FromCHF_CN.csv"%(base_output_path, i)  # channels
     # name_ch = "%s-%d_pad_AT_CN.csv"%(base_output_path, i)  # channels
-    df = pd.read_csv('%s/%s/%s'%(directory, base_output_path, name_ch)) # channels
+    df = pd.read_csv('%s/%s/%s/%s'%(directory, base_output_path, folder, name_ch)) # channels
     projected_coords = ax_p.projection.transform_points(ccrs.Geodetic(), df['longitude'], df['latitude'])
     coords = projected_coords[:,0:2]
     coords_T = np.zeros_like(coords)
-    coords_T[:,0] = np.max(y) - (coords[:,1] - (bounds.bottom+5*dx)) -0.5*dx# add 5*dx for the padding we addded
+    # coords_T[:,0] = np.max(y) - (coords[:,1] - (bounds.bottom+5*dx)) -0.5*dx# add 5*dx for the padding we addded
+    coords_T[:,0] = (coords[:,1] - (bounds.bottom+5*dx)) #-0.5*dx# add 5*dx for the padding we addded
     coords_T[:,1] = coords[:,0] - (bounds.left) + 0.5*dx
  
     ls = LightSource(azdeg=135, altdeg=45)
@@ -186,8 +192,8 @@ for i in plot_runs:
 axs[-1, 0].set_ylabel(r'$y$ (m)')
 axs[-1, 0].set_xlabel(r'$x$ (m)')
 
-# plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-# plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+plt.savefig('%s/%s/hillshade_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/hillshade_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% Saturation class
@@ -292,22 +298,23 @@ ax.set_xticklabels(df_satall.index, ha='right', rotation=45)
 #           )
 ax.spines[['right', 'top']].set_visible(False)
 plt.tight_layout()
-plt.show()
 plt.savefig('%s/%s/sat_compare_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
 plt.savefig('%s/%s/sat_compare_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 #%% Hillslope length and relief: model 1
 
 
-files_ht = ["%s-%d_pad_HilltopData_TN.csv"%(base_output_path, i) for i in range(4)]
-df_ht_all = [pd.read_csv(os.path.join(directory,base_output_path,file_ht)) for file_ht in files_ht]
+# files_ht = ["%s-%d_pad_HilltopData_TN.csv"%(base_output_path, i) for i in range(4)]
+files_ht = ["%s-%d_HilltopData_TN.csv"%(base_output_path, i) for i in range(4)]
+df_ht_all = [pd.read_csv(os.path.join(directory,base_output_path,folder, file_ht)) for file_ht in files_ht]
 names = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR'] # in order
 
 #%% Hillslope length and relief: model 2
 
-base_output_path_2 = 'CaseStudy_cross_1'
-files_ht_2 = ["%s-%d_pad_HilltopData_TN.csv"%(base_output_path_2, i) for i in range(4)]
-df_ht_all_2 = [pd.read_csv(os.path.join(directory,base_output_path_2,file_ht)) for file_ht in files_ht_2]
+base_output_path_2 = 'CaseStudy_cross_2'
+# files_ht_2 = ["%s-%d_pad_HilltopData_TN.csv"%(base_output_path_2, i) for i in range(4)]
+files_ht_2 = ["%s-%d_HilltopData_TN.csv"%(base_output_path_2, i) for i in range(4)]
+df_ht_all_2 = [pd.read_csv(os.path.join(directory,base_output_path_2,folder, file_ht)) for file_ht in files_ht_2]
 names_2 = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR'] # in order
 
 #%% Hillslope length and relief: field
@@ -405,10 +412,9 @@ axs[1].set_xticklabels(labels, rotation=45, ha='right')
 axs[1].set_yscale('log')
 axs[1].set_title('Hillslope Relief')
 axs[1].set_ylabel('Height (m)')
-plt.show()
 fig.tight_layout()
-# plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-# plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% hilltop curvature violin plot
@@ -429,7 +435,7 @@ q3s = [np.percentile(c, 75) for c in Cht]
 meds = [np.percentile(c, 50) for c in Cht]
 axs.vlines(pos, q1s, q3s, color='k', linestyle='-', lw=3)
 axs.set_xticks(pos)
-axs.set_xticklabels(labels, rotation=45, ha='right')
+axs.set_xticklabels(labels, rotation=30, ha='right')
 # axs.set_yscale('log')
 axs.set_ylabel('$log_{10}(-C_{ht})$ (1/m)')
 axs.set_title('Hilltop Curvature')
@@ -458,8 +464,8 @@ df_chi_sites = [df_chi_DR, df_chi_BR]
 names_sites = ['Druids Run', 'Baisman Run']
 
 # models
-files_chi = ["%s-%d_pad_MChiSegmented.csv"%(base_output_path, i) for i in range(4)]
-df_chi_all = [pd.read_csv(os.path.join(directory,base_output_path,file_chi)) for file_chi in files_chi]
+files_chi = ["%s-%d_MChiSegmented.csv"%(base_output_path, i) for i in range(4)]
+df_chi_all = [pd.read_csv(os.path.join(directory,base_output_path,folder,file_chi)) for file_chi in files_chi]
 names = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR'] # in order
 
 # collect things for main model results
@@ -489,7 +495,7 @@ plt.tight_layout()
 plt.savefig('%s/%s/chi_elevation_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
 plt.savefig('%s/%s/chi_elevation_%s.png'%(directory, base_output_path, base_output_path), transparent=True)
 
-#%% violin plots of hillslope length and relief
+#%% violin plots of channel steepness
 
 # select order and set some plot attributes
 labels = ['Druids Run', 'DR-DR', 'DR-BR', 'Baisman Run', 'BR-BR', 'BR-DR']
@@ -518,9 +524,9 @@ q3s = [np.percentile(c, 75) for c in ksn]
 meds = [np.percentile(c, 50) for c in ksn]
 axs.vlines(pos, q1s, q3s, color='k', linestyle='-', lw=3)
 axs.set_xticks(pos)
-axs.set_xticklabels(labels, rotation=45, ha='right')
+axs.set_xticklabels(labels, rotation=30, ha='right')
 # axs.set_yscale('log')
-axs.set_ylabel(r'log10 $k_{sn}$')
+axs.set_ylabel(r'$log_{10} (k_{sn})$ (-)')
 axs.set_title('Channel Steepness')
 fig.tight_layout()
 plt.savefig('%s/%s/ksn_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
@@ -602,7 +608,6 @@ axs[1].set_xlabel(r'Measured $\overline{R}$')
 axs[1].set_ylabel(r'Modeled $\overline{R}$')
 axs[0].legend(loc='lower left')
 plt.tight_layout()
-plt.show()
 plt.savefig('%s/%s/Lh_R_scatter_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
 plt.savefig('%s/%s/Lh_R_scatter_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
@@ -617,10 +622,10 @@ name_hds = "%s-%d_EyeSources.csv"%(base_output_path, i) # channel heads
 # name_rge = "%s-%d_RidgeData.csv"%(base_output_path, i) # ridges h
 name_ht = "%s-%d_HilltopData_TN.csv"%(base_output_path, i) # hilltopData
 
-df = pd.read_csv(os.path.join(directory,base_output_path, 'lsdtt', name_chi)) # channels
-df1 = pd.read_csv(os.path.join(directory,base_output_path, 'lsdtt', name_hds)) # channel heads
+df = pd.read_csv(os.path.join(directory,base_output_path, folder, name_chi)) # channels
+df1 = pd.read_csv(os.path.join(directory,base_output_path, folder, name_hds)) # channel heads
 # df2 = pd.read_csv(os.path.join(directory,base_output_path, name_rge)) # ridges
-df3 = pd.read_csv(os.path.join(directory,base_output_path, 'lsdtt', name_ht)) # ridges
+df3 = pd.read_csv(os.path.join(directory,base_output_path, folder, name_ht)) # ridges
 
 
 
@@ -829,11 +834,11 @@ name_ht = "%s-%d_HilltopData_TN.csv"%(bop, i) # hilltopData
 name_chi_corr = "%s-%d_MChiSegmented.csv"%(bop_corr, i)
 name_ht_corr = "%s-%d_HilltopData_TN.csv"%(bop_corr, i) # hilltopData
 
-df_chi = pd.read_csv(os.path.join(directory,bop, 'lsdtt', name_chi)) # channels
-df_ht = pd.read_csv(os.path.join(directory,bop, 'lsdtt', name_ht)) # ridges
+df_chi = pd.read_csv(os.path.join(directory,bop, folder, name_chi)) # channels
+df_ht = pd.read_csv(os.path.join(directory,bop, folder, name_ht)) # ridges
 
-df_chi_corr = pd.read_csv(os.path.join(directory,bop_corr, 'lsdtt', name_chi_corr)) # channels
-df_ht_corr = pd.read_csv(os.path.join(directory,bop_corr, 'lsdtt', name_ht_corr)) # ridges
+df_chi_corr = pd.read_csv(os.path.join(directory,bop_corr, folder, name_chi_corr)) # channels
+df_ht_corr = pd.read_csv(os.path.join(directory,bop_corr, folder, name_ht_corr)) # ridges
 
 
 Lh = [df_ht_BR['Lh'], df_ht['Lh'], df_ht_corr['Lh']]
@@ -850,4 +855,16 @@ axs[0].set_ylabel('Lh (m)')
 axs[1].set_ylabel('m_chi (-)')
 axs[0].set_title('Hillslope Length')
 axs[1].set_title('Channel Steepness')
+# %%
+
+i = 1
+grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
+qstar = grid.at_node['surface_water_effective__discharge']/(df_params['p'][i]*grid.at_node['drainage_area'])
+curvature = grid.at_node['curvature']
+area = grid.at_node['drainage_area']
+
+qstar[np.isnan(qstar)] = 0
+# curvature[np.isan(curvature)] = 
+# grid.imshow(qstar>0.8, cmap='plasma')
+grid.imshow(curvature>0.001, cmap='plasma')
 # %%

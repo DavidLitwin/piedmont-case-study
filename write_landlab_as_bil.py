@@ -3,6 +3,7 @@ Borrowing extensively from https://here.isnew.info/how-to-save-a-numpy-array-as-
 
 """
 #%%
+import os
 from osgeo import gdal
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,21 +45,27 @@ bais_arr, bais_ds = read_envi(path+name)
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_2' #'Steady_sp_3_18' #
-model_runs = np.arange(4)
+base_output_path = 'CaseStudy_cross_1'
+model_runs = range(4)
+# fields = {'topographic__elevation':'', 'qstar':'qstar', 'curvature':'curv'}
+fields = {'topographic__elevation':'', 'curvature':'curv'}
 
 for i in model_runs:
-    grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
-    arr = grid.at_node['topographic__elevation'].reshape(grid.shape)
-    # arr[np.isnan(arr)] = -9999
-    arr_0 = arr[1:-1, 1:-1]
-    arr_1 = np.pad(arr_0, ((5,5),(0,5)), mode='symmetric')
-    
-    # write_envi('%s/%s/%s-%d_pad.bil'%(directory, base_output_path, base_output_path, i), 
-    #            arr_1, grid.dx, bais_ds)
-    write_envi('%s/%s/lsdtt/%s-%d.bil'%(directory, base_output_path, base_output_path, i), 
-               arr_1, grid.dx, bais_ds)
+    grid = from_netcdf(os.path.join(directory,base_output_path, f'grid_{i}.nc')) 
 
+    for key, val in fields.items():
+            
+        arr = grid.at_node[key].reshape(grid.shape)
+        arr_0 = arr[1:-1, 1:-1]
+        arr_1 = np.pad(arr_0, ((5,5),(0,5)), mode='symmetric')
+        arr_2 = np.flipud(arr_1)
+        
+        if val == '':
+            write_envi(os.path.join(directory,base_output_path, 'lsdtt', f'{base_output_path}-{i}.bil'), 
+                    arr_2, grid.dx, bais_ds)
+        else:
+            write_envi(os.path.join(directory,base_output_path, 'lsdtt', f'{base_output_path}-{i}_{val}.bil'), 
+            arr_2, grid.dx, bais_ds)
 
 
 # %%
