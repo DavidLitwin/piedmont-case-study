@@ -1,4 +1,7 @@
+"""
+Estimate parameters for cross-model runs.
 
+"""
 #%%
 
 import os

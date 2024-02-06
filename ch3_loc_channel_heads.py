@@ -1,5 +1,5 @@
 """
-Use matplotlib to pick out channel heads
+Use matplotlib to pick out channel heads from DupuitLEM results 
 
 Needs backend: %matplotlib qt6
 
@@ -19,7 +19,7 @@ from mpl_point_clicker import clicker
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_1' #'CaseStudy_cross_11' #'steady_sp_3_18' #'CaseStudy_cross_6'
+base_output_path = 'CaseStudy_cross_2'
 i = 0
 
 #%% Hillshades (projected coordinates) - define channel network
