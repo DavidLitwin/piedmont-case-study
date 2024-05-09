@@ -21,7 +21,7 @@ from generate_colormap import get_continuous_cmap
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_1'
+base_output_path = 'CaseStudy_cross_2'
 folder = 'lsdtt_1'
 model_runs = np.arange(4)
 nrows = 2
@@ -867,4 +867,70 @@ qstar[np.isnan(qstar)] = 0
 # curvature[np.isan(curvature)] = 
 # grid.imshow(qstar>0.8, cmap='plasma')
 grid.imshow(curvature>0.001, cmap='plasma')
+# %%
+
+
+fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(6,6)) #(8,6)
+for i in plot_runs:
+
+    m = np.where(plot_array==i)[0][0]
+    n = np.where(plot_array==i)[1][0]
+    
+    grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
+    # grid = read_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
+    area = np.log10(grid.at_node['drainage_area'])
+    dx = grid.dx
+    y = np.arange(grid.shape[0] + 1) * dx - dx * 0.5
+    x = np.arange(grid.shape[1] + 1) * dx - dx * 0.5
+
+
+    im = axs[m, n].imshow(area.reshape(grid.shape).T, 
+                         origin="lower", 
+                         extent=(x[0], x[-1], y[0], y[-1]), 
+                         cmap='Blues',
+                        #  norm=norm,
+                         interpolation="none",
+                         )
+    axs[m,n].text(0.04, 
+                0.95, 
+                df_params['label'][i], # i, #
+                transform=axs[m,n].transAxes, 
+                fontsize=12, 
+                verticalalignment='top',
+                color='k',
+                bbox=dict(ec='w',
+                          fc='w', 
+                          alpha=0.7,
+                          boxstyle="Square, pad=0.1",
+                          )
+                )   
+    axs[m, n].axis('off')
+
+
+# %%
+grid = from_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
+# grid = read_netcdf('%s/%s/grid_%d.nc'%(directory, base_output_path, i))
+area = np.log10(grid.at_node['drainage_area'])
+elev = grid.at_node['topographic__elevation']
+dx = grid.dx
+y = np.arange(grid.shape[0] + 1) * dx - dx * 0.5
+x = np.arange(grid.shape[1] + 1) * dx - dx * 0.5
+
+fig, ax = plt.subplots(nrows=2)
+im = ax[1].imshow(area.reshape(grid.shape).T, 
+                origin="lower", 
+                extent=(x[0], x[-1], y[0], y[-1]), 
+                cmap='plasma',
+            #  norm=norm,
+                interpolation="none",
+                )
+im = ax[0].imshow(elev.reshape(grid.shape).T, 
+                origin="lower", 
+                extent=(x[0], x[-1], y[0], y[-1]), 
+                cmap='pink',
+            #  norm=norm,
+                interpolation="none",
+                )
+plt.savefig('%s/%s/area_%s_%d.png'%(directory, base_output_path, base_output_path,i), dpi=300, transparent=True)
+
 # %%

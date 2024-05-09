@@ -1,4 +1,4 @@
-
+#%%
 import glob
 import numpy as np
 import pandas as pd
@@ -18,7 +18,8 @@ import cartopy.crs as ccrs
 
 from landlab import imshow_grid
 
-from generate_colormap import get_continuous_cmap
+# from generate_colormap import get_continuous_cmap
+#%%
 
 def equalObs(x, nbin):
     """generate bins with equal number of observations
@@ -309,7 +310,7 @@ xx_BR, yy_BR, zz_BR = kde2D(df_ht_BR['Lh']/max(df_ht_BR['Lh']), df_ht_BR['R']/ma
 hex_colors = ['FFFFFF', '00B4D8', '03045E']
 hex_decs = [0, 0.5, 1.0]
 
-cmap1 = get_continuous_cmap(hex_colors, float_list=hex_decs)
+cmap1 =  'plasma' #get_continuous_cmap(hex_colors, float_list=hex_decs)
 
 # plot kernel density
 fig, axs = plt.subplots(ncols=2, figsize=(8,4))
@@ -497,12 +498,26 @@ plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/f
 
 #%% slope-area of channels
 
-# Druids Run
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
-somask_name = 'baltimore2015_DR1_D_SO.bil' # stream order raster
-slope_name = 'baltimore2015_DR1_SLOPE.bil'
-area_name = 'baltimore2015_DR1_d8_area.bil'
-basin_name = 'baltimore2015_DR1_AllBasins.bil'
+site = 'BR'
+
+if site == 'DR':
+    # Druids Run
+    path = '/Users/dlitwin/Documents/Research/Soldiers Delight/data/LSDTT/'
+    somask_name = 'baltimore2015_DR1_D_SO.bil' # stream order raster
+    slope_name = 'baltimore2015_DR1_SLOPE.bil'
+    area_name = 'baltimore2015_DR1_dinf_area.bil'
+    basin_name = 'baltimore2015_DR1_AllBasins.bil'
+    hs_name = 'baltimore2015_DR1_hs.bil'
+elif site == 'BR':
+    # Baisman Run
+    path = '/Users/dlitwin/Documents/Research/Oregon Ridge/data/LSDTT/'
+    somask_name = 'baltimore2015_BR_D_SO.bil'
+    slope_name = 'baltimore2015_BR_SLOPE.bil' 
+    area_name = 'baltimore2015_BR_dinf_area.bil'
+    basin_name = 'baltimore2015_BR_AllBasins.bil'
+    hs_name = 'baltimore2015_BR_hs.bil'
+else:
+    print('which site?')
 
 somsk = rd.open(path + somask_name)
 ar = rd.open(path + area_name)
@@ -511,41 +526,71 @@ bsn = rd.open(path + basin_name)
 
 streams = somsk.read(1) > 0
 basin = bsn.read(1) > 0 
-mask = np.logical_and(streams, basin)
-area_DR = ar.read(1)[mask]
-slope_DR = slp.read(1)[mask]
+# mask = np.logical_and(streams, basin)
+mask = basin
+area = ar.read(1)[mask]
+slope = slp.read(1)[mask]
 
-area_DR = area_DR[slope_DR>0]
-slope_DR = slope_DR[slope_DR>0]
-
-
-# Baisman Run
-path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
-somask_name = 'baltimore2015_BR_D_SO.bil'
-slope_name = 'baltimore2015_BR_SLOPE.bil' 
-area_name = 'baltimore2015_BR_d8_area.bil'
-basin_name = 'baltimore2015_BR_AllBasins.bil'
-
-somsk = rd.open(path + somask_name)
-ar = rd.open(path + area_name)
-slp = rd.open(path + slope_name)
-bsn = rd.open(path + basin_name)
-
-streams = somsk.read(1) > 0
-basin = bsn.read(1) > 0 
-mask = np.logical_and(streams, basin)
-area_BR = ar.read(1)[mask]
-slope_BR = slp.read(1)[mask]
-
-area_BR = area_BR[slope_BR>0]
-slope_BR = slope_BR[slope_BR>0]
-
+area = area[slope>0]
+slope = slope[slope>0]
 
 #%% slope-area relationship
 
-slope = slope_BR
-area = area_BR
+s_mean, bin_edge, binnum = binned_statistic(np.log(area), slope, statistic='mean', bins=20)
+s_std, _, _ = binned_statistic(np.log(area), slope, statistic='std', bins=20)
+bin_center = bin_edge[:-1] + np.diff(bin_edge)
 
+fig, ax = plt.subplots(figsize=(6,5))
+ax.scatter(area, slope, alpha=0.01, s=1.5)
+ax.errorbar(np.exp(bin_center), s_mean, s_std, linestyle='None', marker='o', color='k', markersize=4)
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_ylim((1e-3,0.2))
+ax.set_ylabel('Slope (m/m)')
+ax.set_xlabel('Area (m)')
+
+#%% area thresholds on hillshade
+
+area_im = ar.read(1)
+src = rd.open(path + hs_name) # hillshade
+rollover = np.exp(bin_center)[np.where(s_mean==max(s_mean))[0][0]]
+geomorph_class = np.zeros_like(area_im) + 2
+geomorph_class[area_im < rollover] = 1
+geomorph_class[area_im > 10**3] = 3
+
+
+bounds = src.bounds
+Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
+proj = src.crs
+utm = 18
+
+fig = plt.figure(figsize=(5,6)) #(6,5)
+ax = fig.add_subplot(1, 1, 1) #, projection=ccrs.UTM(utm)
+
+cs = ax.imshow(src.read(1), 
+                cmap='binary', 
+                extent=Extent, 
+                vmin=100,
+                origin="upper")
+cs = ax.imshow(geomorph_class, 
+                cmap='RdBu', 
+                extent=Extent, 
+                vmin=1,
+                vmax=3,
+                alpha=0.2,
+                origin="upper")
+# if site == 'DR':
+#     ax.set_xlim((341200, 341500)) # DR bounds
+#     ax.set_ylim((4.36490e6,4.36511e6)) # DR Bounds
+# elif site == 'BR':
+#     ax.set_xlim((354550, 355100)) # PB bounds
+#     ax.set_ylim((4.37135e6,4.37225e6)) # PB Bounds
+# else:
+#     print('which site?')
+
+# plt.tight_layout()
+
+#%%
 # linear model
 X = np.log(area).reshape((-1,1))
 y = np.log(slope)
@@ -553,21 +598,21 @@ y = np.log(slope)
 # y = np.log(s_mean)
 x = sm.add_constant(X)
 model = sm.OLS(y, x).fit()
-df_stats = (model.summary2().tables[1])
+# df_stats = (model.summary2().tables[1])
 
-df_stats = df_stats.T
-df_stats.drop(['Std.Err.', 't', 'P>|t|'], inplace=True)
-df_stats['concavity'] = -df_stats['x1']
-df_stats['steepness'] = np.exp(df_stats['const'])
-# df_stats['m_guess'] = 0.5
-# df_stats['n'] = df_stats['m_guess']/df_stats['concavity']
-df_stats['n_guess'] = 1
-df_stats['K'] = df_U['U'][2]/df_stats['steepness']**(df_stats['n_guess'])
+# df_stats = df_stats.T
+# df_stats.drop(['Std.Err.', 't', 'P>|t|'], inplace=True)
+# df_stats['concavity'] = -df_stats['x1']
+# df_stats['steepness'] = np.exp(df_stats['const'])
+# # df_stats['m_guess'] = 0.5
+# # df_stats['n'] = df_stats['m_guess']/df_stats['concavity']
+# df_stats['n_guess'] = 1
+# df_stats['K'] = df_U['U'][2]/df_stats['steepness']**(df_stats['n_guess'])
 
 #%% plot slope-area and fitted line
 
 # get binned data
-areax = equalObs(area, 30)
+areax = equalObs(area, 10)
 s_mean, bin_edge, binnum = binned_statistic(area, slope, statistic='mean', bins=areax)
 s_std, _, _ = binned_statistic(area, slope, statistic='std', bins=areax)
 bin_center = bin_edge[:-1] + np.diff(bin_edge)
@@ -587,30 +632,30 @@ ax.set_ylabel('Slope (m/m)')
 ax.set_xlabel('Area (m)')
 fig.tight_layout()
 # plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/slope_area_DR.png')
-plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/slope_area_BR.png')
+# plt.savefig('C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/slope_area_BR.png')
 
 
 #%%
 
-x = equalObs(area_DR, 30)
-s_mean_DR, bin_edge_DR, binnum_DR = binned_statistic(area_DR, slope_DR, statistic='mean', bins=x)
-s_std_DR, _, _ = binned_statistic(area_DR, slope_DR, statistic='std', bins=x)
-bin_center_DR = bin_edge_DR[:-1] + np.diff(bin_edge_DR)
+# x = equalObs(area_DR, 30)
+# s_mean_DR, bin_edge_DR, binnum_DR = binned_statistic(area_DR, slope_DR, statistic='mean', bins=x)
+# s_std_DR, _, _ = binned_statistic(area_DR, slope_DR, statistic='std', bins=x)
+# bin_center_DR = bin_edge_DR[:-1] + np.diff(bin_edge_DR)
 
-x = equalObs(area_BR, 30)
-s_mean_BR, bin_edge_BR, binnum_BR = binned_statistic(area_BR, slope_BR, statistic='mean', bins=x)
-s_std_BR, _, _ = binned_statistic(area_BR, slope_BR, statistic='std', bins=x)
-bin_center_BR = bin_edge_BR[:-1] + np.diff(bin_edge_BR)
+# x = equalObs(area_BR, 30)
+# s_mean_BR, bin_edge_BR, binnum_BR = binned_statistic(area_BR, slope_BR, statistic='mean', bins=x)
+# s_std_BR, _, _ = binned_statistic(area_BR, slope_BR, statistic='std', bins=x)
+# bin_center_BR = bin_edge_BR[:-1] + np.diff(bin_edge_BR)
 
-fig, ax = plt.subplots(figsize=(6,5))
-ax.errorbar(bin_center_DR, s_mean_DR, s_std_DR, linestyle='None', marker='o', color='r', markersize=4, label='Druid')
-ax.errorbar(bin_center_BR, s_mean_BR, s_std_BR, linestyle='None', marker='o', color='b', markersize=4, label='Baisman')
-ax.set_xscale('log')
-ax.set_yscale('log')
-ax.set_ylabel('Slope (m/m)')
-ax.set_xlabel('Area (m)')
-fig.legend(frameon=False)
-fig.tight_layout()
+# fig, ax = plt.subplots(figsize=(6,5))
+# ax.errorbar(bin_center_DR, s_mean_DR, s_std_DR, linestyle='None', marker='o', color='r', markersize=4, label='Druid')
+# ax.errorbar(bin_center_BR, s_mean_BR, s_std_BR, linestyle='None', marker='o', color='b', markersize=4, label='Baisman')
+# ax.set_xscale('log')
+# ax.set_yscale('log')
+# ax.set_ylabel('Slope (m/m)')
+# ax.set_xlabel('Area (m)')
+# fig.legend(frameon=False)
+# fig.tight_layout()
 
 
 
