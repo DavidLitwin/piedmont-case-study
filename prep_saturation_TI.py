@@ -6,7 +6,7 @@ import rasterio as rd
 from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
 
-save_directory = 'C:/Users/dgbli/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
+save_directory = '/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/figures/'
 
 
 # %% paths (rescaled dem)
@@ -17,7 +17,7 @@ resol = '5_meter'
 
 if site=='DR':
     ## Soldiers Delight:
-    path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/%s/'%resol
+    path = '/Users/dlitwin/Documents/Research/Soldiers Delight/data/LSDTT/%s/'%resol
     
     basin_file = "baltimore2015_DR1_%s_AllBasins.bil"%res
     slopefile = "baltimore2015_DR1_%s_SLOPE.bil"%res
@@ -29,7 +29,7 @@ if site=='DR':
 
 else:
     # Oregon Ridge
-    path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/%s/'%resol
+    path = '/Users/dlitwin/Documents/Research/Oregon Ridge/data/LSDTT/%s/'%resol
 
     basin_file = "baltimore2015_BR_%s_AllBasins.bil"%res
     slopefile = "baltimore2015_BR_%s_SLOPE.bil"%res
@@ -45,7 +45,7 @@ site = 'DR'
 
 if site=='DR':
     ## Soldiers Delight:
-    path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/LSDTT/'
+    path = '/Users/dlitwin/Documents/Research/Soldiers Delight/data/LSDTT/'
     
     basin_file = "baltimore2015_DR1_AllBasins.bil"
     slopefile = "baltimore2015_DR1_SLOPE.bil"
@@ -57,7 +57,7 @@ if site=='DR':
 
 else:
     # Oregon Ridge
-    path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/LSDTT/'
+    path = '/Users/dlitwin/Documents/Research/Oregon Ridge/data/LSDTT/'
 
     basin_file = "baltimore2015_BR_AllBasins.bil"
     slopefile = "baltimore2015_BR_SLOPE.bil"
@@ -179,7 +179,7 @@ TI_dataset.close()
 
 #%% clean Pond Branch and Soldiers Delight EMLID REACH saturation files
 
-path = 'C:/Users/dgbli/Documents/Research/Oregon Ridge/data/saturation/'
+path = '/Users/dlitwin/Documents/Research/Oregon Ridge/data/saturation/'
 paths = glob.glob(path + "PB_UTM_*.csv")
 
 for pth in paths:
@@ -198,7 +198,7 @@ for pth in paths:
     df.to_csv(path + "transects_%s.csv"%pth.split('_')[-1][:-4])
 
 
-path = 'C:/Users/dgbli/Documents/Research/Soldiers Delight/data/saturation/'
+path = '/Users/dlitwin/Documents/Research/Soldiers Delight/data/saturation/'
 paths = glob.glob(path + "DR_UTM_*.csv")
 
 for pth in paths:
@@ -215,3 +215,14 @@ for pth in paths:
                 }
     df.rename(columns=namesdict, inplace=True)
     df.to_csv(path + "transects_%s.csv"%pth.split('_')[-1][:-4])
+
+#%% add the right UTC information to surveys without it
+
+path = '/Users/dlitwin/Documents/Research/Soldiers Delight/data/saturation/'
+names = ['DR_transects_20220311.csv', 'DR_transects_20220324.csv', 'DR_transects_20220419.csv', 'DR_transects_20220427.csv']
+
+for name in names:
+    df = pd.read_csv(path+name)
+    df['BeginTime'] = pd.to_datetime(df.BeginTime, utc=False).dt.tz_localize('America/New_York')
+    df.to_csv(path + "transects_%s.csv"%name.split('_')[-1][:-4])
+
