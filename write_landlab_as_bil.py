@@ -45,7 +45,7 @@ bais_arr, bais_ds = read_envi(path+name)
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_1'
+base_output_path = 'CaseStudy_cross_15'
 model_runs = range(4)
 # fields = {'topographic__elevation':'', 'qstar':'qstar', 'curvature':'curv'}
 fields = {'topographic__elevation':'', 'curvature':'curv'}

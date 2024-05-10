@@ -19,8 +19,8 @@ from mpl_point_clicker import clicker
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_2'
-i = 0
+base_output_path = 'CaseStudy_cross_15'
+i = 2
 
 #%% Hillshades (projected coordinates) - define channel network
 

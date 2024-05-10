@@ -21,8 +21,8 @@ from generate_colormap import get_continuous_cmap
 
 # directory = 'C:/Users/dgbli/Documents/Research Data/HPC output/DupuitLEMResults/post_proc'
 directory = '/Users/dlitwin/Documents/Research Data/HPC output/DupuitLEMResults/post_proc/'
-base_output_path = 'CaseStudy_cross_2'
-folder = 'lsdtt_1'
+base_output_path = 'CaseStudy_cross_14'
+folder = 'lsdtt'
 model_runs = np.arange(4)
 nrows = 2
 ncols = 2
@@ -311,7 +311,7 @@ names = ['DR-DR', 'BR-BR', 'DR-BR', 'BR-DR'] # in order
 
 #%% Hillslope length and relief: model 2
 
-base_output_path_2 = 'CaseStudy_cross_2'
+base_output_path_2 = 'CaseStudy_cross_15'
 # files_ht_2 = ["%s-%d_pad_HilltopData_TN.csv"%(base_output_path_2, i) for i in range(4)]
 files_ht_2 = ["%s-%d_HilltopData_TN.csv"%(base_output_path_2, i) for i in range(4)]
 df_ht_all_2 = [pd.read_csv(os.path.join(directory,base_output_path_2,folder, file_ht)) for file_ht in files_ht_2]
@@ -413,8 +413,8 @@ axs[1].set_yscale('log')
 axs[1].set_title('Hillslope Relief')
 axs[1].set_ylabel('Height (m)')
 fig.tight_layout()
-plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
-plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
+# plt.savefig('%s/%s/Lh_R_violinplot_%s.png'%(directory, base_output_path, base_output_path), dpi=300, transparent=True)
+# plt.savefig('%s/%s/Lh_R_violinplot_%s.pdf'%(directory, base_output_path, base_output_path), transparent=True)
 
 
 #%% hilltop curvature violin plot

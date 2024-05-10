@@ -17,7 +17,7 @@ from calc_storm_stats import get_event_interevent_arrays
 make_figures = False
 
 # model suffix (CaseStudy_cross_N)
-N = 11
+N = 15
 
 # Docs path
 path_docs = '/Users/dlitwin/Documents'
@@ -128,7 +128,7 @@ df_D = pd.DataFrame(data=[[q25_DR, med_DR, q75_DR], [q25_BR, med_BR, q75_BR]],
 df_params['D'] =  df_D['q50'] #df_D['q50'].mean()
 D_Stat = ranksums(D_DR, D_BR)
 
-df_params['Sc'] = 1.0
+df_params['Sc'] = 0.0
 
 #%% violin plot Cht and D
 
@@ -233,19 +233,10 @@ Ksp_Stat = ranksums(Ksp_DR, Ksp_BR)
 # start by assuming that they are the same, then iterate based on the model results.
 df_params['Qstar_max'] = [0.6,0.3] #0.3,0.3
 
-
-# Lh for hillslope length correction
-lh_path = '/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Lh_stats.csv'
-df_Lh_stats = pd.read_csv(lh_path, index_col=0)
-
-r_path = '/Users/dlitwin/Documents/Papers/Ch3_oregon_ridge_soldiers_delight/df_Relief_stats.csv'
-df_R_stats = pd.read_csv(r_path, index_col=0)
-
 # calculate erodibility based on Qstar_max
-df_params['v0'] = 10 # 30 15 5 # window we averaged DEMs over to calculate most quantities
+df_params['v0'] = 30 # 30 15 5 
 df_params['Ksp'] = df_Ksp['q50']
 df_params['K'] = df_params['Ksp']/df_params['Qstar_max'] # the coefficient we use has to be greater because it will be multiplied by Q*
-# df_params['K'] = (df_params['Ksp']*(1+df_Lh_stats['q50']/df_params['v0']))/df_params['Qstar_max'] # scale with Q*, but also scale by hillslope length factor
 
 
 #%% Violin plot - total erodibility
@@ -346,7 +337,7 @@ if make_figures:
 
 # %% precipitation
 
-path = os.path.join(path_docs, "Research/Transmissivity wetness/Data/BAIS/BAIS_PQ_hr.p")
+path = os.path.join(path_docs, "Research/Transmissivity-wetness/Data/BAIS/BAIS_PQ_hr.p")
 df_P = pickle.load(open(path,"rb"))
 
 storm_depths, storm_durs, interstorm_durs = get_event_interevent_arrays(df_P, 'Precip mm/hr')
@@ -382,8 +373,7 @@ df_params['p'] = df_params['ds']/(df_params['tr'] + df_params['tb'])
 df_DR_soil = pd.read_csv(path_DR+'SoilSurvey/SoilHydraulicProperties_DR.csv')
 df_DR_soil = df_DR_soil[df_DR_soil['musym'].isin(['CeB', 'CeC', 'CeD'])]
 df_grouped = df_DR_soil.groupby('desgnmaster').mean(numeric_only=True)
-# b_DR = df_grouped.loc['A']['hzdepb_r'] * 0.0254 #m
-b_DR = 0.2 #m make this very small 
+b_DR = df_grouped.loc['A']['hzdepb_r'] * 0.0254 #m
 
 # transmissivity we calculated using the saturation survey data
 dfT_DR = pd.read_csv(figpath+'transmissivity_DR_logTIQ_5.csv')
