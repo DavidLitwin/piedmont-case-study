@@ -37,6 +37,8 @@ for ID in model_runs:
         df =  pd.DataFrame(columns=df.columns)
     dfs.append(df)
 df_results = pd.concat(dfs, axis=1, ignore_index=True).T
+df_results.to_csv('%s/%s/results.csv'%(directory,base_output_path), index=True, float_format='%.3e')
+
 
 dfs = []
 for ID in model_runs:
