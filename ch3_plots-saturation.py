@@ -234,7 +234,7 @@ bounds = src.bounds
 Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
 Extent_90 = [bounds.bottom,bounds.top,bounds.right,bounds.left]
 
-fig, axs = plt.subplots(nrows=len(dfnew.date.unique()), ncols=2, figsize=(5,6)) #(5,8)
+fig, axs = plt.subplots(nrows=len(dfnew.date.unique()), ncols=2, figsize=(5,8)) #(5,6)
 
 grouped_date = dfnew.groupby('date')
 i = 0
@@ -268,7 +268,7 @@ for date, df in grouped_date:
 
     axs[i,0].set_xticks([])
     axs[i,0].set_yticks([])
-    axs[i,0].set_xlabel(r'$Q = %.2f$ mm/d'%(df['Q m/d'].iloc[0]*1000))  
+    axs[i,0].set_xlabel(r'$Q/A_{tot} = %.2f$ mm/d'%(df['Q m/d'].iloc[0]*1000))  
     # axs[i,0].set_xlabel('')
     axs[i,0].set_ylabel('')
     axs[i,0].set_title(str(date), fontsize=10)
@@ -292,9 +292,9 @@ for date, df in grouped_date:
     i += 1
 
 plt.tight_layout()
-plt.savefig(save_directory+f'sat_TI_{site}_{res}m.pdf', transparent=True)
-plt.savefig(save_directory+f'sat_TI_{site}_{res}m.png', transparent=True)
-plt.show()
+# plt.savefig(save_directory+f'sat_TI_{site}_{res}m.pdf', transparent=True)
+# plt.savefig(save_directory+f'sat_TI_{site}_{res}m.png', transparent=True)
+# plt.show()
 
 #%% just map view
 
@@ -305,7 +305,7 @@ bounds = src.bounds
 Extent = [bounds.left,bounds.right,bounds.bottom,bounds.top]
 Extent_90 = [bounds.bottom,bounds.top,bounds.right,bounds.left]
 
-fig, axs = plt.subplots(nrows=len(dfnew.date.unique()), figsize=(3,8)) #(3,6)
+fig, axs = plt.subplots(nrows=len(dfnew.date.unique()), figsize=(3,6)) #(3,8)
 
 grouped_date = dfnew.groupby('date')
 i = 0
@@ -351,9 +351,9 @@ for date, df in grouped_date:
     i += 1
 
 plt.tight_layout()
-plt.savefig(save_directory+f'sat_{site}_{res}m_rows.pdf', transparent=True)
-plt.savefig(save_directory+f'sat_{site}_{res}m_rows.png', transparent=True, dpi=300)
-plt.show()
+# plt.savefig(save_directory+f'sat_{site}_{res}m_rows.pdf', transparent=True)
+# plt.savefig(save_directory+f'sat_{site}_{res}m_rows.png', transparent=True, dpi=300)
+# plt.show()
 
 #%% Logistic regression: sat_bin ~ TI_filtered + logQ
 
